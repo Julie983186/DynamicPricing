@@ -94,7 +94,7 @@ class _RegisterFormState extends State<RegisterForm> {
   // 定義 TextEditingController 來獲取輸入框的內容
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
-  final accountController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   // 將 buildTextField 移到類別內部，確保正確使用控制器
@@ -120,7 +120,7 @@ class _RegisterFormState extends State<RegisterForm> {
       children: [
         buildTextField('姓名', controller: nameController),
         buildTextField('電話', controller: phoneController),
-        buildTextField('帳號', controller: accountController),
+        buildTextField('Email', controller: emailController),
         buildTextField('密碼', controller: passwordController, obscureText: true),
         const SizedBox(height: 20),
         ElevatedButton(
@@ -129,7 +129,7 @@ class _RegisterFormState extends State<RegisterForm> {
               bool isSuccess = await registerUser(
                 nameController.text,
                 phoneController.text,
-                accountController.text,
+                emailController.text,
                 passwordController.text,
               );
 
@@ -182,21 +182,21 @@ class LoginForm extends StatefulWidget {
 }
 
 class _LoginFormState extends State<LoginForm> {
-  final accountController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        buildTextField('帳號', controller: accountController),
+        buildTextField('Email', controller: emailController),
         buildTextField('密碼', controller: passwordController, obscureText: true),
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () async {
             try {
               bool isSuccess = await loginUser(
-                accountController.text,
+                emailController.text,
                 passwordController.text,
               );
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'pages/register_login_page.dart';  // 引入登入註冊頁
-import 'pages/home_page.dart';            // 引入首頁
+import 'pages/camera_page.dart';
+import 'pages/preview_page.dart';
+import 'pages/result_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -8,14 +9,18 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '註冊登入範例',
-      debugShowCheckedModeBanner: false,
-      // 初始頁面設定為 RegisterLoginPage
-      home: const RegisterLoginPage(),
+      title: 'Dynamic Pricing',
+      theme: ThemeData(primarySwatch: Colors.green),
+      initialRoute: '/camera',
+      routes: {
+        '/camera': (context) =>  CameraPage(),
+        '/preview': (context) => const PreviewPage(),
+        '/result': (context) => const ResultPage(),
+      },
+      home: CameraPage(),
     );
   }
 }

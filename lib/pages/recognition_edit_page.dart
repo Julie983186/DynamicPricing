@@ -1,0 +1,87 @@
+import 'package:flutter/material.dart';
+
+class RecognitionEditPage extends StatefulWidget {
+  const RecognitionEditPage({super.key});
+
+  @override
+  State<RecognitionEditPage> createState() => _RecognitionEditPageState();
+}
+
+class _RecognitionEditPageState extends State<RecognitionEditPage> {
+  final TextEditingController nameController =
+      TextEditingController(text: '瑞穗鮮乳・全脂290ml');
+  final TextEditingController dateController =
+      TextEditingController(text: '2025-05-25');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFD3F3DA),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
+        child: Column(
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Icon(Icons.arrow_back_ios),
+                SizedBox(width: 8),
+                Text(
+                  'LOGO',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Image.asset(
+              'assets/sample.jpg',
+              height: 200,
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: '商品名稱',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: dateController,
+              decoration: const InputDecoration(
+                labelText: '有效期限',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                // 送出處理
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('送出'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                // 重拍處理
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.lightBlue,
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Text('重新掃描'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

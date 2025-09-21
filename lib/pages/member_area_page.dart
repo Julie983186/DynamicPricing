@@ -1,5 +1,8 @@
 
 import 'package:flutter/material.dart';
+import 'member_edit_page.dart'; // 引入 member_edit_page.dart 檔案
+import 'member_history_page.dart'; // 引入掃描歷史記錄頁面
+import 'scanning_picture_page.dart'; // 引入影像辨識頁面
 
 class MemberAreaPage extends StatelessWidget {
   final String userName;
@@ -132,7 +135,27 @@ class MemberAreaPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: GestureDetector(
         onTap: () {
+        // 判斷點擊的是哪一個選項
+        if (title == '編輯個人資料') {
+          // 如果是「編輯個人資料」，則導航到 MemberEditPage
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MemberEditPage()),
+          );
+        } else if (title == '瀏覽歷史記錄') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MemberHistoryPage()),
+          );
+        }else if (title == '開始商品掃描') { // 新增的跳轉邏輯
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ScanningPicturePage()),
+          );
+        }else {
+          // 其他選項的功能
           print('$title 被點擊');
+        }
         },
         child: Text(
           title,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'member_edit_page.dart'; // 引入 member_edit_page.dart 檔案
 import 'member_history_page.dart'; // 引入掃描歷史記錄頁面
 import 'scanning_picture_page.dart'; // 引入影像辨識頁面
+import 'register_login_page.dart';
 
 class MemberAreaPage extends StatelessWidget {
   final int userId;
@@ -103,13 +104,16 @@ class MemberAreaPage extends StatelessWidget {
                             height: 50,
                             child: ElevatedButton(
                               onPressed: () {
-                                // TODO: 實作登出邏輯
-                                print('登出按鈕被點擊');
-                                // 導航回登入頁面
+                                // 導航回登入頁，並清空頁面堆疊
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const RegisterLoginPage()),
+                                  (route) => false,
+                                );
                               },
                               style: ElevatedButton.styleFrom(
                                 foregroundColor: Colors.white, 
-                                backgroundColor: const Color(0xFFFFB300), // 橘色按鈕背景
+                                backgroundColor: const Color(0xFFFFB300), 
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -138,41 +142,47 @@ class MemberAreaPage extends StatelessWidget {
   Widget _buildMenuItem(BuildContext context, String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: GestureDetector(
-        onTap: () {
-        // 判斷點擊的是哪一個選項
-        if (title == '編輯個人資料') {
-          // 如果是「編輯個人資料」，則導航到 MemberEditPage
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MemberEditPage(userId: userId), // 傳遞 userId
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (title == '編輯個人資料') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MemberEditPage(userId: userId),
+                ),
+              );
+            } else if (title == '瀏覽歷史記錄') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberHistoryPage()),
+              );
+            } else if (title == '開始商品掃描') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ScanningPicturePage()),
+              );
+            } else {
+              print('$title 被點擊');
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          splashColor: Colors.green.withOpacity(0.3),
+          highlightColor: Colors.green.withOpacity(0.1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            alignment: Alignment.center,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                decorationColor: Colors.black54,
+                decorationThickness: 1.0,
+                decoration: TextDecoration.none,
+              ),
             ),
-          );
-        } else if (title == '瀏覽歷史記錄') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MemberHistoryPage()),
-          );
-        }else if (title == '開始商品掃描') { // 新增的跳轉邏輯
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ScanningPicturePage()),
-          );
-        }else {
-          // 其他選項的功能
-          print('$title 被點擊');
-        }
-        },
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.black87,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.black54,
-            decorationThickness: 1.0,
           ),
         ),
       ),

@@ -85,6 +85,37 @@ def get_user(user_id):
             return jsonify({'message': '找不到該會員'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# 更新會員資料
+@app.route('/user/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json()
+    
+    # 只取出前端傳過來的欄位
+    fields = {}
+    for key in ['name', 'email', 'phone', 'password']:
+        if key in data:
+            fields[key] = data[key]
+
+    if not fields:
+        return jsonify({'message': '沒有可更新的欄位'}), 400
+
+    # 動態生成 SQL
+    set_clause = ", ".join([f"{key}=%s" for key in fields.keys()])
+    values = list(fields.values())
+    values.append(user_id)  # id 放最後
+
+    try:
+        cur = mysql.connection.cursor()
+        sql = f"UPDATE users SET {set_clause} WHERE id=%s"
+        cur.execute(sql, values)
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({'message': '更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
     
 if __name__ == '__main__':

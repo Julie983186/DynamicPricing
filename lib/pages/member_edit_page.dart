@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // 記得引入 fetchUserData
+import '../services/api_service.dart'; 
 
 class MemberEditPage extends StatefulWidget {
   final int userId;
@@ -13,7 +13,7 @@ class MemberEditPage extends StatefulWidget {
 class _MemberEditPageState extends State<MemberEditPage> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
-  late TextEditingController _accountController;
+  late TextEditingController _emailController;
   late TextEditingController _passwordController;
 
   bool _isLoading = true;
@@ -23,7 +23,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
     super.initState();
     _nameController = TextEditingController();
     _phoneController = TextEditingController();
-    _accountController = TextEditingController();
+    _emailController = TextEditingController();
     _passwordController = TextEditingController();
 
     _loadUserData(); // 初始化時去後端抓資料
@@ -35,7 +35,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
       setState(() {
         _nameController.text = userData['name'] ?? '';
         _phoneController.text = userData['phone'] ?? '';
-        _accountController.text = userData['email'] ?? '';
+        _emailController.text = userData['email'] ?? '';
         _isLoading = false;
       });
     } else {
@@ -116,11 +116,11 @@ class _MemberEditPageState extends State<MemberEditPage> {
           ),
           const SizedBox(height: 30),
 
-          _buildTextFieldRow('姓名', _nameController, readOnly: true),
+          _buildTextFieldRow('姓名', _nameController, hintText: '請輸入姓名'),
           const SizedBox(height: 15),
           _buildTextFieldRow('電話', _phoneController, hintText: '請輸入電話'),
           const SizedBox(height: 15),
-          _buildTextFieldRow('帳號', _accountController, readOnly: true),
+          _buildTextFieldRow('帳號', _emailController, hintText: '請輸入Email'),
           const SizedBox(height: 15),
           _buildTextFieldRow('密碼', _passwordController, hintText: '請輸入密碼', obscureText: true),
           const SizedBox(height: 30),
@@ -129,11 +129,30 @@ class _MemberEditPageState extends State<MemberEditPage> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                // 之後可以在這裡呼叫 updateUser API
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
+              onPressed: () async {
+                bool success = await updateUserData(
+                  userId: widget.userId,
+                  name: _nameController.text.isNotEmpty ? _nameController.text : null,
+                  phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+                  email: _emailController.text.isNotEmpty ? _emailController.text : null,
+                  password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
                 );
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('資料已成功修改！'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('更新失敗'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,

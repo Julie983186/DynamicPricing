@@ -36,8 +36,7 @@ Future<bool> registerUser(String name, String phone, String email, String passwo
 }
 
 // 新增登入函式
-Future<bool> loginUser(String email, String password) async {
-  //final String ip = kIsWeb ? 'http://127.0.0.1:5000' : 'http://你的局域網IP:5000';
+Future<Map<String, dynamic>?> loginUser(String email, String password) async {
   final String ip = 'http://127.0.0.1:5000';
   final url = Uri.parse('$ip/login');
 
@@ -49,17 +48,23 @@ Future<bool> loginUser(String email, String password) async {
     );
 
     if (response.statusCode == 200) {
-      print('登入成功');
-      return true;
+      final data = jsonDecode(response.body);
+      return {
+        'id': data['user']['id'],
+        'name': data['user']['name'],
+      };
     } else {
       print('登入失敗: ${response.body}');
-      return false;
+      return null;
     }
   } catch (e) {
     print('連線錯誤: $e');
-    return false;
+    return null;
   }
 }
+
+
+
 
 
 class RegisterScreen extends StatelessWidget {
@@ -97,5 +102,24 @@ class RegisterScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+Future<Map<String, dynamic>?> fetchUserData(int userId) async {
+  final String ip = 'http://127.0.0.1:5000';
+  final url = Uri.parse('$ip/user/$userId');
+
+  try {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print('取得會員資料失敗: ${response.body}');
+      return null;
+    }
+  } catch (e) {
+    print('連線錯誤: $e');
+    return null;
   }
 }

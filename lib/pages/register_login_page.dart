@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import '../services/api_service.dart'; // 引入 api_service.dart
+import 'member_area_page.dart';
+import 'member_edit_page.dart';
+import '../services/api_service.dart'; 
 
 // 註冊與登入頁面
 class RegisterLoginPage extends StatelessWidget {
@@ -135,17 +137,13 @@ class _RegisterFormState extends State<RegisterForm> {
 
               if (isSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('註冊成功！'),
-                    backgroundColor: Colors.green,
-                  ),
+                  const SnackBar(content: Text('註冊成功！請重新登入'), backgroundColor: Colors.green),
                 );
                 await Future.delayed(const Duration(seconds: 2));
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              } else {
+
+                // 返回登入頁 (切換 TabIndex)
+                DefaultTabController.of(context).animateTo(1);
+              }else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('註冊失敗，請重試。'),
@@ -194,36 +192,25 @@ class _LoginFormState extends State<LoginForm> {
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () async {
-            try {
-              bool isSuccess = await loginUser(
-                emailController.text,
-                passwordController.text,
-              );
+            final user = await loginUser(
+              emailController.text,
+              passwordController.text,
+            );
 
-              if (isSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('登入成功！'),
-                    backgroundColor: Colors.green,
+            if (user != null) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MemberAreaPage(
+                    userId: user['id'],
+                    userName: user['name'], // 從後端 API 拿到 userName
                   ),
-                );
-                await Future.delayed(const Duration(seconds: 1));
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('登入失敗，請檢查帳號或密碼'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            } catch (e) {
+                ),
+              );
+            } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('發生錯誤: $e'),
+                const SnackBar(
+                  content: Text('登入失敗'),
                   backgroundColor: Colors.red,
                 ),
               );

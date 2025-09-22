@@ -5,9 +5,14 @@ import 'member_history_page.dart'; // 引入掃描歷史記錄頁面
 import 'scanning_picture_page.dart'; // 引入影像辨識頁面
 
 class MemberAreaPage extends StatelessWidget {
+  final int userId;
   final String userName;
 
-  const MemberAreaPage({Key? key, this.userName = "XXX"}) : super(key: key);
+  const MemberAreaPage({
+    Key? key,
+    required this.userId,
+    required this.userName,   
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +145,9 @@ class MemberAreaPage extends StatelessWidget {
           // 如果是「編輯個人資料」，則導航到 MemberEditPage
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const MemberEditPage()),
+            MaterialPageRoute(
+              builder: (context) => MemberEditPage(userId: userId), // 傳遞 userId
+            ),
           );
         } else if (title == '瀏覽歷史記錄') {
           Navigator.push(

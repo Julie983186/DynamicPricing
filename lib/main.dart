@@ -13,10 +13,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '註冊登入範例',
+      title: '碳即',
       debugShowCheckedModeBanner: false,
-      // 暫時將初始頁面設定為 MemberAreaPage
-      home: MemberAreaPage(userName: '測試使用者'),
+      // 一開始進入登入/註冊頁
+      home: const RegisterLoginPage(),
     );
   }
 }

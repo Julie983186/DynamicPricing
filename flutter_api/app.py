@@ -47,16 +47,45 @@ def login():
 
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        cur.execute("SELECT id, name, phone, email FROM users WHERE email=%s AND password=%s", (email, password))
         user = cur.fetchone()
         cur.close()
 
         if user:
-            return jsonify({'message': '登入成功'}), 200
+            user_data = {
+                'id': user[0],
+                'name': user[1],
+                'phone': user[2],
+                'email': user[3]
+            }
+            return jsonify({'message': '登入成功', 'user': user_data}), 200
         else:
             return jsonify({'message': '帳號或密碼錯誤'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# 抓取會員資料
+@app.route('/user/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id, name, phone, email FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+
+        if user:
+            user_data = {
+                'id': user[0],
+                'name': user[1],
+                'phone': user[2],
+                'email': user[3],
+            }
+            return jsonify(user_data), 200
+        else:
+            return jsonify({'message': '找不到該會員'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

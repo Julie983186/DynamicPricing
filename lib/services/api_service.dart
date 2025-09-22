@@ -123,3 +123,47 @@ Future<Map<String, dynamic>?> fetchUserData(int userId) async {
     return null;
   }
 }
+
+// 更新會員資料函式，允許更新電話和密碼
+Future<bool> updateUserData({
+  required int userId,
+  String? name,
+  String? email,
+  String? phone,
+  String? password,
+}) async {
+  final String ip = 'http://127.0.0.1:5000';
+  final url = Uri.parse('$ip/user/$userId');
+
+  // 只放入有值的欄位
+  final Map<String, dynamic> body = {};
+  if (name != null) body['name'] = name;
+  if (email != null) body['email'] = email;
+  if (phone != null) body['phone'] = phone;
+  if (password != null) body['password'] = password;
+
+  if (body.isEmpty) {
+    print('沒有可更新的欄位');
+    return false;
+  }
+
+  try {
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      print('更新失敗: ${response.body}');
+      return false;
+    }
+  } catch (e) {
+    print('連線錯誤: $e');
+    return false;
+  }
+}
+
+

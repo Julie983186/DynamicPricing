@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'member_edit_page.dart'; // 引入 member_edit_page.dart 檔案
 import 'member_history_page.dart'; // 引入掃描歷史記錄頁面
@@ -156,7 +155,7 @@ class MemberAreaPage extends StatelessWidget {
             } else if (title == '瀏覽歷史記錄') {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberHistoryPage()),
+                MaterialPageRoute(builder: (context) => MemberHistoryPage(userId:userId)),
               );
             } else if (title == '開始商品掃描') {
               Navigator.push(

@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Python API",
+      "type": "shell",
+      "command": "python",
+      "args": ["app.py"],
+      "options": {
+        "cwd": "C:/Users/User/Desktop/project/DynamicPricing/flutter_api"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Flutter App",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": {
+        "cwd": "C:/Users/User/Desktop/project/DynamicPricing"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Both",
+      "dependsOn": ["Run Python API", "Run Flutter App"],
+      "dependsOrder": "parallel"
+    }
+  ]
+}
+
+@user_bp.route("/get_user", methods=["POST"])
+def get_user():
+    data = request.get_json()
+    email = data.get("email")  # 用 email 或 user_id 作為唯一識別
+
+    try:
+        mysql = current_app.config["MYSQL_INSTANCE"]
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT name, phone, email, password FROM users WHERE email=%s", (email,))
+        user = cur.fetchone()
+        cur.close()
+
+        if user:
+            return jsonify({
+                "name": user[0],
+                "phone": user[1],
+                "email": user[2],
+                "password": user[3]
+            }), 200
+        else:
+            return jsonify({"message": "找不到使用者"}), 404
+    except Exception as e:
+        return jsonify({"message": "查詢失敗", "error": str(e)}), 500

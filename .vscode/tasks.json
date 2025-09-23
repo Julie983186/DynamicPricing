@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Python API",
+      "type": "shell",
+      "command": "python",
+      "args": ["app.py"],
+      "options": {
+        "cwd": "C:/Users/User/Downloads/my_project/flutter_api" //改成自己的路徑
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Flutter App",
+      "type": "shell",
+      "command": "flutter",
+      "args": ["run"],
+      "options": {
+        "cwd": "C:/Users/User/Downloads/my_project" //改成自己的路徑
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Both",
+      "dependsOn": ["Run Python API", "Run Flutter App"],
+      "dependsOrder": "parallel"
+    }
+  ]
+}

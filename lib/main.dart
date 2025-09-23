@@ -8,7 +8,11 @@ import 'pages/recognition_result_page.dart';
 import 'pages/recognition_edit_page.dart';
 import 'pages/register_login_page.dart';  // 引入登入註冊頁
 import 'pages/member_area_page.dart';    // 引入會員專區頁
-// 引入首頁
+import 'pages/home_page.dart';            // 引入首頁
+import 'pages/counting.dart';
+import 'pages/countingresult.dart';
+import 'pages/adviceproduct.dart';
+
 
 void main() {
   runApp(const MyApp());

@@ -13,7 +13,6 @@ import 'pages/counting.dart';
 import 'pages/countingresult.dart';
 import 'pages/adviceproduct.dart';
 
-
 void main() {
   runApp(const MyApp());
 }

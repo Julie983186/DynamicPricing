@@ -1,7 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_mysqldb import MySQL
-from flask import Flask, request, jsonify
-from flask_mysqldb import MySQL
 from flask_cors import CORS
 from db_config import db_config
 
@@ -115,10 +113,41 @@ def update_user(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+#抓歷史資料
+import traceback
 
+@app.route('/get_products/<int:user_id>', methods=['GET'])
+def get_products(user_id):
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            SELECT p.productid, p.producttype, p.proname, p.proprice,   
+            h.created_at, p.expiredate, p.status, p.market
+            FROM history h
+            JOIN product p ON h.productid = p.productid
+            WHERE h.userid = %s
+            ORDER BY h.created_at DESC
+        """, (user_id,))
+        products = cur.fetchall()
+        cur.close()
 
-    
+        product_list = []
+        for p in products:
+            product_list.append({
+                'ProductID': p[0],
+                'ProductType': p[1],
+                'ProName': p[2],
+                'ProPrice': p[3],
+                'ScanDate': p[4].strftime('%Y-%m-%d') if p[4] else None,
+                'ExpireDate': p[5].strftime('%Y-%m-%d') if p[5] else None,
+                'Status': p[6],
+                'Market': p[7],
+            })
+        return jsonify({'products': product_list}), 200
+
+    except Exception as e:
+        print(traceback.format_exc())  # 印出完整錯誤
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-

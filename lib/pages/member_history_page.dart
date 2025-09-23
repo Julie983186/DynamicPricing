@@ -1,18 +1,58 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-class MemberHistoryPage extends StatelessWidget {
-  const MemberHistoryPage({Key? key}) : super(key: key);
+class MemberHistoryPage extends StatefulWidget {
+  final int userId; // 登入後傳進來的會員 id
+  const MemberHistoryPage({Key? key, required this.userId}) : super(key: key);
+
+  @override
+  State<MemberHistoryPage> createState() => _MemberHistoryPageState();
+}
+
+class _MemberHistoryPageState extends State<MemberHistoryPage> {
+  List<dynamic> products = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchHistory();
+  }
+
+  Future<void> fetchHistory() async {
+    try {
+      final response = await http.get(
+        Uri.parse("http://127.0.0.1:5000/get_products/${widget.userId}"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          products = data['products'];
+          isLoading = false;
+        });
+      } else {
+        throw Exception("載入失敗");
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      print("Error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9), // 淺綠色背景
+      backgroundColor: const Color(0xFFE8F5E9),
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // 讓 AppBar 背景透明
-        elevation: 0, // 移除 AppBar 的陰影
-        iconTheme: const IconThemeData(color: Color(0xFF388E3C)), // 返回箭頭顏色
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF388E3C)),
         title: const Text(
-          '', // 不顯示 AppBar 標題
+          '',
           style: TextStyle(color: Color(0xFF388E3C)),
         ),
       ),
@@ -22,18 +62,16 @@ class MemberHistoryPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 頂部搜尋欄與月曆圖示
+              // 搜尋欄
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: _buildSearchBar(context),
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
-              // 標題 (往下移動一點)
-              const SizedBox(height: 10),
+
               const Text(
                 '掃描歷史記錄',
                 style: TextStyle(
@@ -43,26 +81,25 @@ class MemberHistoryPage extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 20),
 
               // 歷史記錄列表
               Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: ListView(
-                      children: [
-                        _buildHistoryCard(context),
-                        const SizedBox(height: 15),
-                        _buildHistoryCard(context),
-                        const SizedBox(height: 15),
-                        _buildHistoryCard(context),
-                        const SizedBox(height: 15),
-                      ],
-                    ),
-                  ),
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : products.isEmpty
+                        ? const Center(child: Text("目前沒有歷史紀錄"))
+                        : ListView.builder(
+                            itemCount: products.length,
+                            itemBuilder: (context, index) {
+                              final product = products[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 15.0),
+                                child: _buildHistoryCard(context, product),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
@@ -71,7 +108,6 @@ class MemberHistoryPage extends StatelessWidget {
     );
   }
 
-  // 輔助方法：創建搜尋欄
   Widget _buildSearchBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15.0),
@@ -101,8 +137,6 @@ class MemberHistoryPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          
-          // 月曆圖示
           GestureDetector(
             onTap: () {
               showDatePicker(
@@ -112,7 +146,7 @@ class MemberHistoryPage extends StatelessWidget {
                 lastDate: DateTime(2030),
               ).then((pickedDate) {
                 if (pickedDate != null) {
-                  print('選擇的日期: ${pickedDate.toString()}');
+                  print('選擇的日期: $pickedDate');
                 }
               });
             },
@@ -123,8 +157,7 @@ class MemberHistoryPage extends StatelessWidget {
     );
   }
 
-  // 輔助方法：創建歷史記錄卡片
-  Widget _buildHistoryCard(BuildContext context) {
+  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> product) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
@@ -144,7 +177,6 @@ class MemberHistoryPage extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 商品圖片和掃描地點資訊
               Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -154,37 +186,37 @@ class MemberHistoryPage extends StatelessWidget {
                     color: Colors.grey[300],
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    '家樂福',
-                    style: TextStyle(fontSize: 12, color: Colors.black87),
+                  Text(
+                    product['Market'] ?? '未知超市',
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
                   ),
                   const Text(
-                    '內壢店',
+                    '分店',
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
               ),
               const SizedBox(width: 15),
-              
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '瑞穗鮮乳-全脂290ml',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    Text(
+                      product['ProName'] ?? '未知商品',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 5),
-                    _buildInfoRow('掃描時間', '2025/05/28 14:32'),
-                    _buildInfoRow('有效期限', '2025/05/30'),
+                    _buildInfoRow('掃描時間', product['ScanDate'] ?? ''),
+                    _buildInfoRow('有效期限', product['ExpireDate'] ?? ''),
+                    _buildInfoRow('狀態', product['Status'] ?? ''),
                     const SizedBox(height: 5),
-                    _buildPriceRow('原價', '\$100', isOriginal: true),
-                    _buildPriceRow('建議價格', '\$55', isOriginal: false),
+                    _buildPriceRow('原價', '\$${product['ProPrice'] ?? 0}', isOriginal: true),
+                    _buildPriceRow('建議價格', '\$55', isOriginal: false), // 假設
                   ],
                 ),
               ),
-              
-              // 刪除圖示（可點擊）
+
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -203,8 +235,7 @@ class MemberHistoryPage extends StatelessWidget {
       },
     );
   }
-  
-  // 輔助方法：創建資訊行
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -218,22 +249,27 @@ class MemberHistoryPage extends StatelessWidget {
     );
   }
 
-  // 輔助方法：創建價格行
   Widget _buildPriceRow(String label, String value, {required bool isOriginal}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         children: [
-          Text('$label:', style: TextStyle(
-            color: isOriginal ? Colors.black54 : Colors.green[700],
-            fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
-          )),
+          Text(
+            '$label:',
+            style: TextStyle(
+              color: isOriginal ? Colors.black54 : Colors.green[700],
+              fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
+            ),
+          ),
           const SizedBox(width: 5),
-          Text(value, style: TextStyle(
-            color: isOriginal ? Colors.black87 : Colors.red,
-            fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
-            fontSize: isOriginal ? 14 : 16,
-          )),
+          Text(
+            value,
+            style: TextStyle(
+              color: isOriginal ? Colors.black87 : Colors.red,
+              fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
+              fontSize: isOriginal ? 14 : 16,
+            ),
+          ),
         ],
       ),
     );

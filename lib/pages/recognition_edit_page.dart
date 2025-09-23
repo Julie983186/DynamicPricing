@@ -21,12 +21,16 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
           children: [
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            Row(
               children: [
-                Icon(Icons.arrow_back_ios),
-                SizedBox(width: 8),
-                Text(
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context); // ←返回 Result Page
+                  },
+                  child: const Icon(Icons.arrow_back_ios),
+                ),
+                const SizedBox(width: 8),
+                const Text(
                   'LOGO',
                   style: TextStyle(
                     fontSize: 28,
@@ -69,16 +73,6 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
               child: const Text('送出'),
             ),
             const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () {
-                // 重拍處理
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('重新掃描'),
-            ),
           ],
         ),
       ),

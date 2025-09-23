@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 // import to pages
-import 'pages/camera_page.dart';
+import 'pages/scanning_picture_page.dart';
 import 'pages/recognition_loading_page.dart';
 import 'pages/recognition_result_page.dart';
 import 'pages/recognition_edit_page.dart';
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Dynamic Pricing App',
+      title: '碳即',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green),
 
@@ -35,14 +35,8 @@ class MyApp extends StatelessWidget {
         Locale('en', 'US'),
       ],
 
-      // sinitial route
-      initialRoute: '/camera',
-
       // all routes
       routes: {
-        // camera group
-        '/camera': (context) => const CameraPage(),
-       
         // login group
         '/login': (context) => const RegisterLoginPage(),
         //'/member': (context) => const MemberAreaPage(userName: '測試使用者'),
@@ -52,8 +46,6 @@ class MyApp extends StatelessWidget {
         '/resultCheck': (context) => const RecognitionResultPage(),
         '/edit': (context) => const RecognitionEditPage(),
       },
-      title: '碳即',
-      debugShowCheckedModeBanner: false,
       // 一開始進入登入/註冊頁
       home: const RegisterLoginPage(),
     );

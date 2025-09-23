@@ -11,20 +11,13 @@ class RecognitionResultPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
           children: [
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Icon(Icons.arrow_back_ios),
-                SizedBox(width: 8),
-                Text(
-                  'LOGO',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-              ],
+            const Text(
+              'LOGO',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
             ),
             const SizedBox(height: 20),
             Image.asset(
@@ -77,7 +70,7 @@ class RecognitionResultPage extends StatelessWidget {
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: () {
-                // 再撮影の処理
+                Navigator.pushReplacementNamed(context, '/scan');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.lightBlue,

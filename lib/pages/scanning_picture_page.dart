@@ -34,8 +34,14 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
         return;
       }
 
+      // 找後鏡頭（back）
+      final backCamera = cameras.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
       _cameraController = CameraController(
-        cameras.first,
+        backCamera,
         ResolutionPreset.high,
         enableAudio: false,
       );
@@ -369,19 +375,10 @@ Widget _buildCurrentStoreInfo() {
     try {
       await Future.delayed(const Duration(seconds: 2));
       print('照片上傳成功！');
-      
-      final mockApiResponse = {
-        'status': 'success',
-        'message': '圖片已成功處理',
-        'data': {
-          'product_name': '瑞穗鮮乳',
-          'price': '65',
-          'expiration_date': '2025-10-30',
-        }
-      };
-      
-      print('後端回傳結果: $mockApiResponse');
-      
+
+      // 上傳完成後 → 跳到辨識 Loading 頁
+      if (!mounted) return;
+      Navigator.pushNamed(context, '/loading');
     } catch (e) {
       print('照片上傳失敗: $e');
     }

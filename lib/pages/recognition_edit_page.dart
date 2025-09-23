@@ -64,7 +64,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // 送出處理
+                Navigator.pushNamed(context, '/counting');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,

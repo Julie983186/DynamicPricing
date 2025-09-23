@@ -43,7 +43,8 @@ class MyApp extends StatelessWidget {
         // login group
         '/login': (context) => const RegisterLoginPage(),
         //'/member': (context) => const MemberAreaPage(userName: '測試使用者'),
-
+        '/counting': (context) => const LoadingPage(), // 價格計算中頁面
+        '/countingResult': (context) => const CountingResult(), // 計算結果頁面
         // recognition group
         '/loading': (context) => const RecognitionLoadingPage(),
         '/resultCheck': (context) => const RecognitionResultPage(),

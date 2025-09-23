@@ -48,7 +48,7 @@ class RecognitionResultPage extends StatelessWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // 正確を押したときの処理
+                Navigator.pushNamed(context, '/counting');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,

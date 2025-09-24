@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import '../services/route_logger.dart';
 
-class AdviceProductList extends StatelessWidget {
+class AdviceProductList extends StatefulWidget {
   final ScrollController scrollController;
   const AdviceProductList({super.key, required this.scrollController});
 
   @override
+  State<AdviceProductList> createState() => _AdviceProductListState();
+}
+
+class _AdviceProductListState extends State<AdviceProductList> {
+  @override
+  void initState() {
+    super.initState();
+    saveCurrentRoute('/advice_product'); // 記錄當前頁面
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView(
-      controller: scrollController,
+      controller: widget.scrollController,
       padding: const EdgeInsets.all(16),
       children: [
         const Center(
@@ -22,7 +34,6 @@ class AdviceProductList extends StatelessWidget {
         const SizedBox(height: 16),
 
         GridView.count(
-          controller: scrollController, // 跟 DraggableScrollableSheet 同步
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
@@ -30,17 +41,17 @@ class AdviceProductList extends StatelessWidget {
           crossAxisSpacing: 16,
           children: const [
             ProductCard(
-              imageUrl: "https://i.imgur.com/7F3K5bO.png",
+              imageUrl: "assets/milk.jpg",
               price: 30,
               expiry: "效期剩1天",
             ),
             ProductCard(
-              imageUrl: "https://i.imgur.com/0rVeh4q.png",
+              imageUrl: "assets/milk.jpg",
               price: 28,
               expiry: "效期剩1天",
             ),
             ProductCard(
-              imageUrl: "https://i.imgur.com/TKXrY9K.png",
+              imageUrl: "assets/milk.jpg",
               price: 25,
               expiry: "效期剩5小時",
             ),
@@ -51,7 +62,7 @@ class AdviceProductList extends StatelessWidget {
   }
 }
 
-/// 沿用原本 ProductCard
+/// ProductCard 保持不變
 class ProductCard extends StatelessWidget {
   final String imageUrl;
   final double price;
@@ -76,7 +87,7 @@ class ProductCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
-              child: Image.network(imageUrl, fit: BoxFit.contain),
+              child: Image.asset(imageUrl, fit: BoxFit.contain),
             ),
             const SizedBox(height: 8),
             Text(

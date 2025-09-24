@@ -1,13 +1,12 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // 導入剛剛的檔案
 import 'package:flutter/foundation.dart';
 
-// 函式現在回傳 Future<bool>，用來表示成功或失敗
+final String ip = 'http://127.0.0.1:5000';
+
+/// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
-  //final String ip = kIsWeb ? 'http://127.0.0.1:5000' : 'http://172.20.10.2:5000';
-  final String ip = 'http://127.0.0.1:5000';
   final url = Uri.parse('$ip/register');
 
   try {
@@ -24,20 +23,20 @@ Future<bool> registerUser(String name, String phone, String email, String passwo
 
     if (response.statusCode == 200) {
       print('註冊成功');
-      return true; // 註冊成功，回傳 true
+      return true;
     } else {
       print('註冊失敗: ${response.body}');
-      return false; // 註冊失敗，回傳 false
+      return false;
     }
   } catch (e) {
     print('連線錯誤: $e');
-    return false; // 連線錯誤，回傳 false
+    return false;
   }
 }
 
-// 新增登入函式
+/// ------------------ 登入 ------------------
+/// 回傳 id, name, token
 Future<Map<String, dynamic>?> loginUser(String email, String password) async {
-  final String ip = 'http://127.0.0.1:5000';
   final url = Uri.parse('$ip/login');
 
   try {
@@ -52,6 +51,7 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
       return {
         'id': data['user']['id'],
         'name': data['user']['name'],
+        'token': data['token'], // ✅ JWT token
       };
     } else {
       print('登入失敗: ${response.body}');
@@ -63,54 +63,19 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
   }
 }
 
-
-
-
-
-class RegisterScreen extends StatelessWidget {
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-
-  RegisterScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('註冊')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(controller: nameController, decoration: InputDecoration(labelText: '姓名')),
-            TextField(controller: phoneController, decoration: InputDecoration(labelText: '電話')),
-            TextField(controller: emailController, decoration: InputDecoration(labelText: 'Email')),
-            TextField(controller: passwordController, decoration: InputDecoration(labelText: '密碼'), obscureText: true),
-            ElevatedButton(
-              onPressed: () {
-                registerUser(
-                  nameController.text,
-                  phoneController.text,
-                  emailController.text,
-                  passwordController.text,
-                );
-              },
-              child: Text('註冊'),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-Future<Map<String, dynamic>?> fetchUserData(int userId) async {
-  final String ip = 'http://127.0.0.1:5000';
+/// ------------------ 抓取會員資料 ------------------
+/// 需要帶 token
+Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
   final url = Uri.parse('$ip/user/$userId');
 
   try {
-    final response = await http.get(url);
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // ✅ 加 token
+      },
+    );
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -124,18 +89,18 @@ Future<Map<String, dynamic>?> fetchUserData(int userId) async {
   }
 }
 
-// 更新會員資料函式，允許更新電話和密碼
+/// ------------------ 更新會員資料 ------------------
+/// 需要帶 token
 Future<bool> updateUserData({
   required int userId,
+  required String token,
   String? name,
   String? email,
   String? phone,
   String? password,
 }) async {
-  final String ip = 'http://127.0.0.1:5000';
   final url = Uri.parse('$ip/user/$userId');
 
-  // 只放入有值的欄位
   final Map<String, dynamic> body = {};
   if (name != null) body['name'] = name;
   if (email != null) body['email'] = email;
@@ -150,11 +115,15 @@ Future<bool> updateUserData({
   try {
     final response = await http.put(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // ✅ 加 token
+      },
       body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
+      print('更新成功: ${response.body}');
       return true;
     } else {
       print('更新失敗: ${response.body}');
@@ -166,4 +135,46 @@ Future<bool> updateUserData({
   }
 }
 
+/// ------------------ 註冊畫面 ------------------
+class RegisterScreen extends StatelessWidget {
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
+  RegisterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('註冊')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: '姓名')),
+            TextField(controller: phoneController, decoration: const InputDecoration(labelText: '電話')),
+            TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+            TextField(controller: passwordController, decoration: const InputDecoration(labelText: '密碼'), obscureText: true),
+            ElevatedButton(
+              onPressed: () async {
+                bool success = await registerUser(
+                  nameController.text,
+                  phoneController.text,
+                  emailController.text,
+                  passwordController.text,
+                );
+                if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('註冊成功')),
+                  );
+                }
+              },
+              child: const Text('註冊'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}

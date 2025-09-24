@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/route_logger.dart';
+
 
 class MemberHistoryPage extends StatefulWidget {
-  final int userId; // 登入後傳進來的會員 id
-  const MemberHistoryPage({Key? key, required this.userId}) : super(key: key);
+  final int userId;        // 會員 ID, 訪客用 0
+  final String? token;     // JWT token, 訪客為 null
+
+  const MemberHistoryPage({Key? key, required this.userId, this.token}) : super(key: key);
 
   @override
   State<MemberHistoryPage> createState() => _MemberHistoryPageState();
@@ -18,12 +22,19 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
   void initState() {
     super.initState();
     fetchHistory();
+    saveCurrentRoute('/member_history'); // 記錄當前頁面
   }
 
   Future<void> fetchHistory() async {
     try {
+      final url = Uri.parse("http://127.0.0.1:5000/get_products/${widget.userId}");
+
       final response = await http.get(
-        Uri.parse("http://127.0.0.1:5000/get_products/${widget.userId}"),
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}', // ✅ 會員才帶 token
+        },
       );
 
       if (response.statusCode == 200) {
@@ -33,7 +44,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           isLoading = false;
         });
       } else {
-        throw Exception("載入失敗");
+        throw Exception("載入失敗: ${response.body}");
       }
     } catch (e) {
       setState(() {
@@ -52,7 +63,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF388E3C)),
         title: const Text(
-          '',
+          '掃描歷史',
           style: TextStyle(color: Color(0xFF388E3C)),
         ),
       ),
@@ -89,7 +100,14 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : products.isEmpty
-                        ? const Center(child: Text("目前沒有歷史紀錄"))
+                        ? Center(
+                            child: Text(
+                              widget.token == null
+                                  ? "訪客模式無法保存歷史紀錄"
+                                  : "目前沒有歷史紀錄",
+                              style: const TextStyle(fontSize: 16, color: Colors.black54),
+                            ),
+                          )
                         : ListView.builder(
                             itemCount: products.length,
                             itemBuilder: (context, index) {
@@ -124,11 +142,11 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Icon(Icons.search, color: Colors.grey),
-          const SizedBox(width: 10),
-          const Expanded(
+          Icon(Icons.search, color: Colors.grey),
+          SizedBox(width: 10),
+          Expanded(
             child: TextField(
               decoration: InputDecoration(
                 hintText: '請輸入商品名稱',
@@ -136,103 +154,85 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () {
-              showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              ).then((pickedDate) {
-                if (pickedDate != null) {
-                  print('選擇的日期: $pickedDate');
-                }
-              });
-            },
-            child: const Icon(Icons.calendar_today, color: Colors.grey),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> product) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          padding: const EdgeInsets.all(15.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F8E9),
-            borderRadius: BorderRadius.circular(15.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: const Offset(0, 3),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.all(15.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F8E9),
+        borderRadius: BorderRadius.circular(15.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 商品圖片 placeholder
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: constraints.maxWidth * 0.18,
-                    height: constraints.maxWidth * 0.25,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    product['Market'] ?? '未知超市',
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                  ),
-                  const Text(
-                    '分店',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                ],
+              Container(
+                width: 60,
+                height: 80,
+                color: Colors.grey[300],
               ),
-              const SizedBox(width: 15),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product['ProName'] ?? '未知商品',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 5),
-                    _buildInfoRow('掃描時間', product['ScanDate'] ?? ''),
-                    _buildInfoRow('有效期限', product['ExpireDate'] ?? ''),
-                    _buildInfoRow('狀態', product['Status'] ?? ''),
-                    const SizedBox(height: 5),
-                    _buildPriceRow('原價', '\$${product['ProPrice'] ?? 0}', isOriginal: true),
-                    _buildPriceRow('建議價格', '\$55', isOriginal: false), // 假設
-                  ],
-                ),
+              const SizedBox(height: 5),
+              Text(
+                product['Market'] ?? '未知超市',
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
               ),
-
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('刪除按鈕已點擊'),
-                      backgroundColor: Colors.red,
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-                child: const Icon(Icons.delete_outline, color: Colors.red),
+              const Text(
+                '分店',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(width: 15),
+
+          // 商品資訊
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product['ProName'] ?? '未知商品',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 5),
+                _buildInfoRow('掃描時間', product['ScanDate'] ?? ''),
+                _buildInfoRow('有效期限', product['ExpireDate'] ?? ''),
+                _buildInfoRow('狀態', product['Status'] ?? ''),
+                const SizedBox(height: 5),
+                _buildPriceRow('原價', '\$${product['ProPrice'] ?? 0}', isOriginal: true),
+                _buildPriceRow('建議價格', '\$55', isOriginal: false), // 假設
+              ],
+            ),
+          ),
+
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('刪除按鈕已點擊'),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            child: const Icon(Icons.delete_outline, color: Colors.red),
+          ),
+        ],
+      ),
     );
   }
 

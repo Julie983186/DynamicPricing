@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import 'member_area_page.dart';
-import 'member_edit_page.dart';
-import '../services/api_service.dart'; 
+import 'scanning_picture_page.dart';
+import '../services/api_service.dart';
+import '../services/route_logger.dart';
 
 // 註冊與登入頁面
-class RegisterLoginPage extends StatelessWidget {
+class RegisterLoginPage extends StatefulWidget {
   const RegisterLoginPage({super.key});
+
+  @override
+  State<RegisterLoginPage> createState() => _RegisterLoginPageState();
+}
+
+class _RegisterLoginPageState extends State<RegisterLoginPage> {
+  @override
+  void initState() {
+    super.initState();
+    saveCurrentRoute('/login'); // 記錄當前頁面
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +45,7 @@ class RegisterLoginPage extends StatelessWidget {
                     width: 300,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 244, 242, 242).withOpacity(0.8),
+                      color: Colors.white.withOpacity(0.8),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -51,19 +62,19 @@ class RegisterLoginPage extends StatelessWidget {
                         SizedBox(
                           height: 400,
                           child: TabBarView(
-                            children: [
-                              // 註冊會員表單 - 使用修正後的 StatefulWidget
+                            children: const [
                               RegisterForm(),
-                              // 會員登入表單
                               LoginForm(),
                             ],
                           ),
                         ),
                         OutlinedButton(
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const HomePage()),
+                              MaterialPageRoute(
+                                builder: (context) => const ScanningPicturePage(),
+                              ),
                             );
                           },
                           style: OutlinedButton.styleFrom(
@@ -84,7 +95,7 @@ class RegisterLoginPage extends StatelessWidget {
   }
 }
 
-// 修正後的註冊表單，使用 StatefulWidget
+// --- 註冊表單 ---
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
 
@@ -93,13 +104,11 @@ class RegisterForm extends StatefulWidget {
 }
 
 class _RegisterFormState extends State<RegisterForm> {
-  // 定義 TextEditingController 來獲取輸入框的內容
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // 將 buildTextField 移到類別內部，確保正確使用控制器
   Widget buildTextField(String label, {bool obscureText = false, TextEditingController? controller}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -140,23 +149,15 @@ class _RegisterFormState extends State<RegisterForm> {
                   const SnackBar(content: Text('註冊成功！請重新登入'), backgroundColor: Colors.green),
                 );
                 await Future.delayed(const Duration(seconds: 2));
-
-                // 返回登入頁 (切換 TabIndex)
-                DefaultTabController.of(context).animateTo(1);
-              }else {
+                DefaultTabController.of(context)?.animateTo(1);
+              } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('註冊失敗，請重試。'),
-                    backgroundColor: Colors.red,
-                  ),
+                  const SnackBar(content: Text('註冊失敗，請重試。'), backgroundColor: Colors.red),
                 );
               }
             } catch (e) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('發生錯誤: $e'),
-                  backgroundColor: Colors.red,
-                ),
+                SnackBar(content: Text('發生錯誤: $e'), backgroundColor: Colors.red),
               );
             }
           },
@@ -172,6 +173,7 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 }
 
+// --- 登入表單 ---
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
 
@@ -203,16 +205,14 @@ class _LoginFormState extends State<LoginForm> {
                 MaterialPageRoute(
                   builder: (context) => MemberAreaPage(
                     userId: user['id'],
-                    userName: user['name'], // 從後端 API 拿到 userName
+                    userName: user['name'],
+                    token: user['token'],
                   ),
                 ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('登入失敗'),
-                  backgroundColor: Colors.red,
-                ),
+                const SnackBar(content: Text('登入失敗'), backgroundColor: Colors.red),
               );
             }
           },
@@ -228,8 +228,7 @@ class _LoginFormState extends State<LoginForm> {
   }
 }
 
-
-// 輔助函式，用於建立帶有控制器的 TextField，但現在它只在 LoginForm 內部被使用
+// 輔助函式
 Widget buildTextField(String label, {bool obscureText = false, TextEditingController? controller}) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8.0),

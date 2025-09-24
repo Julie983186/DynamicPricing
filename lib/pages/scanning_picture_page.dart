@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'dart:io';
+import '../services/route_logger.dart';
+
 
 class ScanningPicturePage extends StatefulWidget {
   const ScanningPicturePage({Key? key}) : super(key: key);
@@ -21,6 +23,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
     super.initState();
     _initializeCamera();
     _initializeAnimation();
+    saveCurrentRoute('/scan');
   }
 
   // 初始化相機
@@ -384,3 +387,4 @@ Widget _buildCurrentStoreInfo() {
     }
   }
 }
+

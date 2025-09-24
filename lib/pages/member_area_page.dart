@@ -1,33 +1,50 @@
 import 'package:flutter/material.dart';
-import 'member_edit_page.dart'; // 引入 member_edit_page.dart 檔案
-import 'member_history_page.dart'; // 引入掃描歷史記錄頁面
-import 'scanning_picture_page.dart'; // 引入影像辨識頁面
+import 'member_edit_page.dart';
+import 'member_history_page.dart';
+import 'scanning_picture_page.dart';
 import 'register_login_page.dart';
+import '../services/route_logger.dart';
 
-class MemberAreaPage extends StatelessWidget {
+
+class MemberAreaPage extends StatefulWidget {
   final int userId;
   final String userName;
+  final String token;
 
   const MemberAreaPage({
     Key? key,
     required this.userId,
-    required this.userName,   
+    required this.userName,
+    required this.token,
   }) : super(key: key);
+
+  @override
+  State<MemberAreaPage> createState() => _MemberAreaPageState();
+}
+
+class _MemberAreaPageState extends State<MemberAreaPage> {
+  late String userName;
+
+  @override
+  void initState() {
+    super.initState();
+    userName = widget.userName; // 初始化 State 變數
+    saveCurrentRoute('/member_area'); // 記錄當前頁面
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8F5E9),
       body: SafeArea(
-        child: SingleChildScrollView( // 讓內容可以滾動
-          child: Center( // 讓整個內容區塊居中
-            child: ConstrainedBox( // 限制卡片的總寬度
-              constraints: const BoxConstraints(maxWidth: 400), // 設定最大寬度為 400 像素
+        child: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0), // 添加左右內邊距
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
                   children: [
-                    // 頂部 LOGO 區域
                     const Padding(
                       padding: EdgeInsets.only(top: 40.0, bottom: 50.0),
                       child: Text(
@@ -35,16 +52,14 @@ class MemberAreaPage extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 50,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF388E3C), // 深綠色 LOGO
+                          color: Color(0xFF388E3C),
                         ),
                       ),
                     ),
-                    
-                    // 會員專區卡片
                     Container(
                       padding: const EdgeInsets.all(20.0),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F8E9), // 淺米綠色卡片背景
+                        color: const Color(0xFFF1F8E9),
                         borderRadius: BorderRadius.circular(20.0),
                         boxShadow: [
                           BoxShadow(
@@ -58,52 +73,33 @@ class MemberAreaPage extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // 會員頭像
                           const CircleAvatar(
                             radius: 40,
                             backgroundColor: Color(0xFFDCEDC8),
-                            child: Icon(
-                              Icons.person,
-                              size: 50,
-                              color: Color(0xFF689F38),
-                            ),
+                            child: Icon(Icons.person, size: 50, color: Color(0xFF689F38)),
                           ),
                           const SizedBox(height: 15),
-                          
-                          // 會員專區標題
                           const Text(
                             '會員專區',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
                           const SizedBox(height: 5),
-                          
-                          // 歡迎訊息
                           Text(
-                            '$userName您好!',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.black54,
-                            ),
+                            '$userName 您好!', // 使用 State 變數
+                            style: const TextStyle(fontSize: 18, color: Colors.black54),
                           ),
                           const SizedBox(height: 30),
-                          
-                          // 功能按鈕列表
+
                           _buildMenuItem(context, '編輯個人資料', Icons.edit),
                           _buildMenuItem(context, '瀏覽歷史記錄', Icons.history),
                           _buildMenuItem(context, '開始商品掃描', Icons.qr_code_scanner),
+
                           const SizedBox(height: 30),
-                          
-                          // 登出按鈕
                           SizedBox(
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
                               onPressed: () {
-                                // 導航回登入頁，並清空頁面堆疊
                                 Navigator.pushAndRemoveUntil(
                                   context,
                                   MaterialPageRoute(builder: (context) => const RegisterLoginPage()),
@@ -111,17 +107,12 @@ class MemberAreaPage extends StatelessWidget {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white, 
-                                backgroundColor: const Color(0xFFFFB300), 
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                                foregroundColor: Colors.white,
+                                backgroundColor: const Color(0xFFFFB300),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 elevation: 5,
                               ),
-                              child: const Text(
-                                '登出',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
+                              child: const Text('登出', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],
@@ -144,26 +135,32 @@ class MemberAreaPage extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
             if (title == '編輯個人資料') {
-              Navigator.push(
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MemberEditPage(userId: userId),
+                  builder: (context) => MemberEditPage(
+                    userId: widget.userId,
+                    token: widget.token,
+                  ),
                 ),
               );
+              if (result != null && result is String) {
+                setState(() {
+                  userName = result; // 更新名字
+                });
+              }
             } else if (title == '瀏覽歷史記錄') {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MemberHistoryPage(userId:userId)),
+                MaterialPageRoute(builder: (context) => MemberHistoryPage(userId: widget.userId, token: widget.token)),
               );
             } else if (title == '開始商品掃描') {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ScanningPicturePage()),
               );
-            } else {
-              print('$title 被點擊');
             }
           },
           borderRadius: BorderRadius.circular(8),
@@ -172,16 +169,7 @@ class MemberAreaPage extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             alignment: Alignment.center,
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-                decorationColor: Colors.black54,
-                decorationThickness: 1.0,
-                decoration: TextDecoration.none,
-              ),
-            ),
+            child: Text(title, style: const TextStyle(fontSize: 16, color: Colors.black87)),
           ),
         ),
       ),

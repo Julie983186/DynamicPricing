@@ -1,7 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_mysqldb import MySQL
-from flask import Flask, request, jsonify
-from flask_mysqldb import MySQL
 from flask_cors import CORS
 from db_config import db_config
 
@@ -47,18 +45,109 @@ def login():
 
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users WHERE email=%s AND password=%s", (email, password))
+        cur.execute("SELECT id, name, phone, email FROM users WHERE email=%s AND password=%s", (email, password))
         user = cur.fetchone()
         cur.close()
 
         if user:
-            return jsonify({'message': '登入成功'}), 200
+            user_data = {
+                'id': user[0],
+                'name': user[1],
+                'phone': user[2],
+                'email': user[3]
+            }
+            return jsonify({'message': '登入成功', 'user': user_data}), 200
         else:
             return jsonify({'message': '帳號或密碼錯誤'}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+# 抓取會員資料
+@app.route('/user/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id, name, phone, email FROM users WHERE id=%s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+
+        if user:
+            user_data = {
+                'id': user[0],
+                'name': user[1],
+                'phone': user[2],
+                'email': user[3],
+            }
+            return jsonify(user_data), 200
+        else:
+            return jsonify({'message': '找不到該會員'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+# 更新會員資料
+@app.route('/user/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json()
+    
+    # 只取出前端傳過來的欄位
+    fields = {}
+    for key in ['name', 'email', 'phone', 'password']:
+        if key in data:
+            fields[key] = data[key]
+
+    if not fields:
+        return jsonify({'message': '沒有可更新的欄位'}), 400
+
+    # 動態生成 SQL
+    set_clause = ", ".join([f"{key}=%s" for key in fields.keys()])
+    values = list(fields.values())
+    values.append(user_id)  # id 放最後
+
+    try:
+        cur = mysql.connection.cursor()
+        sql = f"UPDATE users SET {set_clause} WHERE id=%s"
+        cur.execute(sql, values)
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({'message': '更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+#抓歷史資料
+import traceback
+
+@app.route('/get_products/<int:user_id>', methods=['GET'])
+def get_products(user_id):
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            SELECT p.productid, p.producttype, p.proname, p.proprice,   
+            h.created_at, p.expiredate, p.status, p.market
+            FROM history h
+            JOIN product p ON h.productid = p.productid
+            WHERE h.userid = %s
+            ORDER BY h.created_at DESC
+        """, (user_id,))
+        products = cur.fetchall()
+        cur.close()
+
+        product_list = []
+        for p in products:
+            product_list.append({
+                'ProductID': p[0],
+                'ProductType': p[1],
+                'ProName': p[2],
+                'ProPrice': p[3],
+                'ScanDate': p[4].strftime('%Y-%m-%d') if p[4] else None,
+                'ExpireDate': p[5].strftime('%Y-%m-%d') if p[5] else None,
+                'Status': p[6],
+                'Market': p[7],
+            })
+        return jsonify({'products': product_list}), 200
+
+    except Exception as e:
+        print(traceback.format_exc())  # 印出完整錯誤
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-

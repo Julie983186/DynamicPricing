@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       title: '註冊登入範例',
       debugShowCheckedModeBanner: false,
       // 初始頁面設定為 RegisterLoginPage
-      home: const RegisterLoginPage(),
+      home: const AdviceProduct(),
     );
   }
 }

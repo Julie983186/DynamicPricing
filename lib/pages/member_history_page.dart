@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
+import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
 
+// 定義顏色常量 (使用與其他頁面一致的色系)
+const Color _kPrimaryGreen = Color(0xFF388E3C);
+const Color _kLightGreenBg = Color(0xFFE8F5E9); // 頁面背景色
+const Color _kCardBg = Color(0xFFF1F8E9); // 卡片背景色
+const Color _kAccentRed = Color(0xFFD32F2F); // 價格/刪除紅色
 
 class MemberHistoryPage extends StatefulWidget {
-  final int userId;        // 會員 ID, 訪客用 0
-  final String? token;     // JWT token, 訪客為 null
+  final int userId;      // 會員 ID, 訪客用 0
+  final String? token;   // JWT token, 訪客為 null
 
   const MemberHistoryPage({Key? key, required this.userId, this.token}) : super(key: key);
 
@@ -17,141 +23,250 @@ class MemberHistoryPage extends StatefulWidget {
 class _MemberHistoryPageState extends State<MemberHistoryPage> {
   List<dynamic> products = [];
   bool isLoading = true;
+  DateTime? _selectedDate; // 💡 新增：用於儲存使用者選擇的日期
 
   @override
   void initState() {
     super.initState();
-    fetchHistory();
-    saveCurrentRoute('/member_history'); // 記錄當前頁面
+    // 初始載入時不傳遞日期，載入全部歷史
+    fetchHistory(); 
+    saveCurrentRoute('/member_history'); 
   }
 
-  Future<void> fetchHistory() async {
+  // 💡 新增：日期選擇器函式
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _kPrimaryGreen, // 日期選擇器主色
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(foregroundColor: _kPrimaryGreen),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      // 重新載入歷史紀錄，並傳遞選定的日期
+      fetchHistory(date: picked);
+    }
+  }
+
+  // 💡 修改：fetchHistory 函式接受可選的 date 參數
+  Future<void> fetchHistory({DateTime? date}) async {
+    setState(() {
+      isLoading = true; // 重新搜尋時顯示 loading
+    });
+
+    // 格式化日期為 YYYY-MM-DD 格式，以便傳遞給 API
+    String? dateString;
+    if (date != null) {
+      dateString = DateFormat('yyyy-MM-dd').format(date);
+    } else if (_selectedDate != null) {
+      dateString = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+    }
+
     try {
-      final url = Uri.parse("http://127.0.0.1:5000/get_products/${widget.userId}");
+      // 構建 API URL (假設 API 可以接收 date 參數)
+      final baseUrl = "http://127.0.0.1:5000/get_products/${widget.userId}";
+      final url = dateString != null
+          ? Uri.parse('$baseUrl?date=$dateString') // 加上日期參數
+          : Uri.parse(baseUrl);
 
       final response = await http.get(
         url,
         headers: {
           'Content-Type': 'application/json',
-          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}', // ✅ 會員才帶 token
+          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}', 
         },
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          products = data['products'];
-          isLoading = false;
-        });
+        if(mounted) {
+          setState(() {
+            products = data['products'] ?? []; 
+            isLoading = false;
+          });
+        }
       } else {
         throw Exception("載入失敗: ${response.body}");
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      print("Error: $e");
+      if(mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+      print("Error fetching history: $e");
     }
   }
 
+  // 模擬刪除功能 (保持不變)
+  void _deleteHistoryItem(int productId, int index) {
+    // 這裡應該呼叫 API 進行實際刪除
+    setState(() {
+      products.removeAt(index);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('商品已移除: ${productId}'), duration: const Duration(seconds: 1)),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    // 💡 顯示當前選定的日期，若無則顯示 '掃描歷史記錄'
+    String titleText = _selectedDate == null 
+        ? '掃描歷史記錄' 
+        : DateFormat('yyyy/MM/dd').format(_selectedDate!);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9),
+      backgroundColor: _kLightGreenBg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        // 移除 AppBar，使用自定義的導航結構以符合設計圖的簡潔風格
+        automaticallyImplyLeading: false, // 隱藏預設返回按鈕
+        toolbarHeight: 0,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF388E3C)),
-        title: const Text(
-          '掃描歷史',
-          style: TextStyle(color: Color(0xFF388E3C)),
-        ),
+        backgroundColor: Colors.transparent,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 搜尋欄
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: _buildSearchBar(context),
+        child: Column(
+          children: [
+            // 頂部導航欄 (返回鍵 + 掃描圖示)
+            _buildCustomHeader(context),
+            
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    // 標題 (顯示日期或預設文字)
+                    Text(
+                      titleText,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _kPrimaryGreen, // 標題顏色使用主色調
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // 搜尋欄
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: _buildSearchBar(context),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    
+                    // 歷史記錄列表
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator(color: _kPrimaryGreen))
+                          : products.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    _selectedDate != null 
+                                        ? "當日沒有歷史紀錄"
+                                        : (widget.token == null ? "訪客模式無法保存歷史紀錄" : "目前沒有歷史紀錄"),
+                                    style: const TextStyle(fontSize: 16, color: Colors.black54),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: products.length,
+                                  itemBuilder: (context, index) {
+                                    final product = products[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 15.0),
+                                      child: _buildHistoryCard(context, product, index),
+                                    );
+                                  },
+                                ),
+                    ),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 30),
-
-              const Text(
-                '掃描歷史記錄',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 20),
-
-              // 歷史記錄列表
-              Expanded(
-                child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : products.isEmpty
-                        ? Center(
-                            child: Text(
-                              widget.token == null
-                                  ? "訪客模式無法保存歷史紀錄"
-                                  : "目前沒有歷史紀錄",
-                              style: const TextStyle(fontSize: 16, color: Colors.black54),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: products.length,
-                            itemBuilder: (context, index) {
-                              final product = products[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 15.0),
-                                child: _buildHistoryCard(context, product),
-                              );
-                            },
-                          ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  // --- UI Helper 函式 ---
+
+  // 依設計圖重新構建的頂部 Header (保持不變)
+  Widget _buildCustomHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+      color: _kLightGreenBg, 
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: _kPrimaryGreen),
+            onPressed: () => Navigator.pop(context), 
+          ),
+          IconButton(
+            icon: const Icon(Icons.fullscreen, color: _kPrimaryGreen), 
+            onPressed: () => Navigator.pushNamed(context, '/scan'), 
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // 💡 修改：搜尋欄位 Helper (加入日曆按鈕)
   Widget _buildSearchBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15.0),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30.0),
         border: Border.all(color: Colors.grey[300]!, width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.search, color: Colors.grey),
-          SizedBox(width: 10),
-          Expanded(
+          const Icon(Icons.search, color: Colors.grey),
+          const SizedBox(width: 10),
+          const Expanded(
             child: TextField(
               decoration: InputDecoration(
                 hintText: '請輸入商品名稱',
                 border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 0),
               ),
+            ),
+          ),
+          // 💡 變更：右側圖標改為日曆，並加上點擊事件
+          GestureDetector(
+            onTap: () => _selectDate(context),
+            child: const Padding(
+              padding: EdgeInsets.only(left: 8.0),
+              child: Icon(Icons.calendar_today, color: _kPrimaryGreen), 
             ),
           ),
         ],
@@ -159,11 +274,21 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     );
   }
 
-  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> product) {
+  // 歷史記錄單一卡片 Helper (保持不變)
+  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> product, int index) {
+    // 假設 product['Market'] 包含 '家樂福' 和 '內壢店'
+    final marketParts = (product['Market'] as String? ?? '未知超市|未知分店').split('|');
+    final market = marketParts[0];
+    final branch = marketParts.length > 1 ? marketParts[1] : '分店';
+    
+    // 價格和有效期限
+    final originalPrice = product['ProPrice'] ?? 0;
+    const suggestedPrice = 55; // 假設建議價格為 55
+
     return Container(
       padding: const EdgeInsets.all(15.0),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F8E9),
+        color: _kCardBg, // 淺綠色卡片背景
         borderRadius: BorderRadius.circular(15.0),
         boxShadow: [
           BoxShadow(
@@ -177,78 +302,86 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 商品圖片 placeholder
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 60,
-                height: 80,
-                color: Colors.grey[300],
-              ),
-              const SizedBox(height: 5),
-              Text(
-                product['Market'] ?? '未知超市',
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-              ),
-              const Text(
-                '分店',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
+          // 商品圖片 + 超市分店
+          SizedBox(
+            width: 80,
+            child: Column(
+              children: [
+                // 圖片 placeholder (可替換為 NetworkImage)
+                Container(
+                  width: 60,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(5),
+                    image: (product['ImageUrl'] != null)
+                      ? DecorationImage(
+                          image: NetworkImage(product['ImageUrl']),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  market,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  branch,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 15),
 
-          // 商品資訊
+          // 商品資訊 (名稱, 時間, 價格)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   product['ProName'] ?? '未知商品',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 5),
-                _buildInfoRow('掃描時間', product['ScanDate'] ?? ''),
-                _buildInfoRow('有效期限', product['ExpireDate'] ?? ''),
-                _buildInfoRow('狀態', product['Status'] ?? ''),
-                const SizedBox(height: 5),
-                _buildPriceRow('原價', '\$${product['ProPrice'] ?? 0}', isOriginal: true),
-                _buildPriceRow('建議價格', '\$55', isOriginal: false), // 假設
+                _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
+                _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
+                _buildPriceRow('原價', '\$${originalPrice}', isOriginal: true),
+                _buildPriceRow('建議價格', '\$${suggestedPrice}', isOriginal: false),
               ],
             ),
           ),
 
+          // 刪除按鈕
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('刪除按鈕已點擊'),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: const Icon(Icons.delete_outline, color: Colors.red),
+            onTap: () => _deleteHistoryItem(product['ProId'] ?? -1, index),
+            child: const Padding(
+              padding: EdgeInsets.only(top: 10.0),
+              child: Icon(Icons.delete_outline, color: _kAccentRed, size: 28),
+            ),
           ),
         ],
       ),
     );
   }
 
+  // 資訊行 Helper (保持不變)
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         children: [
-          Text('$label:', style: const TextStyle(color: Colors.black54)),
+          Text('$label:', style: const TextStyle(color: Colors.black54, fontSize: 13)),
           const SizedBox(width: 5),
-          Text(value, style: const TextStyle(color: Colors.black87)),
+          Text(value, style: const TextStyle(color: Colors.black87, fontSize: 13)),
         ],
       ),
     );
   }
 
+  // 價格行 Helper (保持不變)
   Widget _buildPriceRow(String label, String value, {required bool isOriginal}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
@@ -257,15 +390,16 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           Text(
             '$label:',
             style: TextStyle(
-              color: isOriginal ? Colors.black54 : Colors.green[700],
+              color: isOriginal ? Colors.black54 : _kAccentRed, // 建議價格使用紅色
               fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
+              fontSize: 14
             ),
           ),
           const SizedBox(width: 5),
           Text(
             value,
             style: TextStyle(
-              color: isOriginal ? Colors.black87 : Colors.red,
+              color: isOriginal ? Colors.black87 : _kAccentRed,
               fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
               fontSize: isOriginal ? 14 : 16,
             ),

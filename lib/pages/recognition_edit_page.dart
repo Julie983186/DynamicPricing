@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/route_logger.dart';
+
 
 class RecognitionEditPage extends StatefulWidget {
   const RecognitionEditPage({super.key});
@@ -12,6 +14,12 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
       TextEditingController(text: '瑞穗鮮乳・全脂290ml');
   final TextEditingController dateController =
       TextEditingController(text: '2025-05-25');
+
+  @override
+  void initState() {
+    super.initState();
+    saveCurrentRoute('/edit'); // ✅ 記錄當前頁面
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +50,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
             ),
             const SizedBox(height: 20),
             Image.asset(
-              'assets/sample.jpg',
+              'assets/milk.jpg',
               height: 200,
             ),
             const SizedBox(height: 20),

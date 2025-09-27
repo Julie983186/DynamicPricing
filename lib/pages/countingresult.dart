@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
-import 'adviceproduct.dart'; // 記得引入
+import 'adviceproduct.dart'; 
+import '../services/route_logger.dart';
 
-class CountingResult extends StatelessWidget {
+class CountingResult extends StatefulWidget {
   const CountingResult({super.key});
+
+  @override
+  State<CountingResult> createState() => _CountingResultState();
+}
+
+class _CountingResultState extends State<CountingResult> {
+  @override
+  void initState() {
+    super.initState();
+    saveCurrentRoute('/countingResult'); // 記錄當前頁面
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +27,8 @@ class CountingResult extends StatelessWidget {
       body: SafeArea(
         child: Stack(
           children: [
-            /// 上層內容 (價格結果)
             SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 250), // 預留下方空間給 BottomSheet
+              padding: const EdgeInsets.only(bottom: 250),
               child: Column(
                 children: [
                   const SizedBox(height: 20),
@@ -27,7 +38,6 @@ class CountingResult extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: const [
-                        // 左上角
                         Column(
                           children: [
                             Icon(Icons.person, size: 32, color: Colors.black87),
@@ -71,8 +81,8 @@ class CountingResult extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             color: Colors.white,
                           ),
-                          child: Image.network(
-                            "https://i.ibb.co/5TjRv8k/milk.png",
+                          child: Image.asset(
+                            'assets/milk.jpg',
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -94,9 +104,9 @@ class CountingResult extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            buildPriceBox("原價", "\$$originalPrice",
+                            buildPriceBox("即期價格", "\$$originalPrice",
                                 isDiscount: false),
-                            buildPriceBox("即期優惠價", "\$$discountPrice",
+                            buildPriceBox("AI定價", "\$$discountPrice",
                                 isDiscount: true),
                           ],
                         ),
@@ -126,16 +136,17 @@ class CountingResult extends StatelessWidget {
               ),
             ),
 
-            /// 下方可拖曳的推薦商品區塊
+            // 下方可拖曳的推薦商品區塊
             DraggableScrollableSheet(
-              initialChildSize: 0.25, // 預設高度 (25%)
-              minChildSize: 0.15,     // 最小高度
-              maxChildSize: 0.85,     // 最大高度
+              initialChildSize: 0.25,
+              minChildSize: 0.15,
+              maxChildSize: 0.85,
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -154,7 +165,6 @@ class CountingResult extends StatelessWidget {
     );
   }
 
-  /// 抽出價格卡片
   Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
@@ -180,7 +190,8 @@ class CountingResult extends StatelessWidget {
                 fontSize: isDiscount ? 26 : 24,
                 fontWeight: FontWeight.bold,
                 color: isDiscount ? Colors.deepOrange : Colors.black,
-                decoration: isDiscount ? null : TextDecoration.lineThrough,
+                decoration:
+                    isDiscount ? null : TextDecoration.lineThrough,
               ),
             ),
           ],

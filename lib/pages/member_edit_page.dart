@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; 
+import '../services/api_service.dart';
+import '../services/route_logger.dart';
+
 
 class MemberEditPage extends StatefulWidget {
   final int userId;
+  final String token;
 
-  const MemberEditPage({Key? key, required this.userId}) : super(key: key);
+  const MemberEditPage({Key? key, required this.userId, required this.token}) : super(key: key);
 
   @override
   State<MemberEditPage> createState() => _MemberEditPageState();
@@ -15,7 +18,6 @@ class _MemberEditPageState extends State<MemberEditPage> {
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
-
   bool _isLoading = true;
 
   @override
@@ -25,12 +27,12 @@ class _MemberEditPageState extends State<MemberEditPage> {
     _phoneController = TextEditingController();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
-
-    _loadUserData(); // 初始化時去後端抓資料
+    _loadUserData();
+    saveCurrentRoute('/member_edit'); // 記錄當前頁面
   }
 
   Future<void> _loadUserData() async {
-    final userData = await fetchUserData(widget.userId);
+    final userData = await fetchUserData(widget.userId, widget.token);
     if (userData != null) {
       setState(() {
         _nameController.text = userData['name'] ?? '';
@@ -39,11 +41,31 @@ class _MemberEditPageState extends State<MemberEditPage> {
         _isLoading = false;
       });
     } else {
-      setState(() {
-        _isLoading = false; // 即使失敗也要結束 loading
-      });
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('載入會員資料失敗'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    bool success = await updateUserData(
+      userId: widget.userId,
+      token: widget.token,
+      name: _nameController.text.isNotEmpty ? _nameController.text : null,
+      phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+      email: _emailController.text.isNotEmpty ? _emailController.text : null,
+      password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
+    );
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context, _nameController.text); // 回傳更新後的名稱
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('更新失敗'), backgroundColor: Colors.red),
       );
     }
   }
@@ -56,7 +78,6 @@ class _MemberEditPageState extends State<MemberEditPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF388E3C)),
-        title: const Text('', style: TextStyle(color: Color(0xFF388E3C))),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -110,50 +131,21 @@ class _MemberEditPageState extends State<MemberEditPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '編輯個人資料',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          const Text('編輯個人資料', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 30),
-
           _buildTextFieldRow('姓名', _nameController, hintText: '請輸入姓名'),
           const SizedBox(height: 15),
           _buildTextFieldRow('電話', _phoneController, hintText: '請輸入電話'),
           const SizedBox(height: 15),
           _buildTextFieldRow('帳號', _emailController, hintText: '請輸入Email'),
           const SizedBox(height: 15),
-          _buildTextFieldRow('密碼', _passwordController, hintText: '請輸入密碼', obscureText: true),
+          _buildTextFieldRow('密碼', _passwordController, hintText: '請輸入新密碼', obscureText: true),
           const SizedBox(height: 30),
-
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () async {
-                bool success = await updateUserData(
-                  userId: widget.userId,
-                  name: _nameController.text.isNotEmpty ? _nameController.text : null,
-                  phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-                  email: _emailController.text.isNotEmpty ? _emailController.text : null,
-                  password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
-                );
-
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('資料已成功修改！'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('更新失敗'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
+              onPressed: _saveChanges,
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: const Color(0xFFFFB300),
@@ -169,28 +161,21 @@ class _MemberEditPageState extends State<MemberEditPage> {
   }
 
   Widget _buildTextFieldRow(String label, TextEditingController controller,
-      {String hintText = '', bool obscureText = false, bool readOnly = false}) {
+      {String hintText = '', bool obscureText = false}) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 60,
-          child: Text(label, style: const TextStyle(fontSize: 16, color: Colors.black87)),
-        ),
+        SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 16))),
         const SizedBox(width: 10),
         Expanded(
           child: TextField(
             controller: controller,
-            readOnly: readOnly,
             obscureText: obscureText,
             decoration: InputDecoration(
               hintText: hintText,
-              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
               filled: true,
               fillColor: Colors.white,
             ),
-            style: TextStyle(color: readOnly ? Colors.grey[700] : Colors.black87),
           ),
         ),
       ],

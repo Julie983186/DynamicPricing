@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
+import '../services/route_logger.dart';
 
-class RecognitionResultPage extends StatelessWidget {
+class RecognitionResultPage extends StatefulWidget {
   const RecognitionResultPage({super.key});
+
+  @override
+  State<RecognitionResultPage> createState() => _RecognitionResultPageState();
+}
+
+class _RecognitionResultPageState extends State<RecognitionResultPage> {
+  @override
+  void initState() {
+    super.initState();
+    saveCurrentRoute('/resultCheck'); // 記錄當前頁面
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD3F3DA), // 明るい緑背景
+      backgroundColor: const Color(0xFFD3F3DA), // 明亮綠背景
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
@@ -21,7 +33,7 @@ class RecognitionResultPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Image.asset(
-              'assets/sample.jpg', // temporary image
+              'assets/milk.jpg',
               height: 200,
             ),
             const SizedBox(height: 20),

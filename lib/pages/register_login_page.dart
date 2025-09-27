@@ -4,6 +4,9 @@ import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
 
+// 💡 新增: 定義會員頁面的淺綠色背景
+const Color _kLightGreenBg = Color(0xFFE8F5E9); 
+
 // 註冊與登入頁面
 class RegisterLoginPage extends StatefulWidget {
   const RegisterLoginPage({super.key});
@@ -21,14 +24,14 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
 
   // 💡 Logo 區塊 Helper
   Widget _buildLogo() {
-    return Container(
-      alignment: Alignment.center,
-      height: 120, // 給予 Logo 充足的高度空間
-      width: 280,
+    return SizedBox( // 將 Container 改為 SizedBox，更簡潔
+      height: 150, // 🎯 調整處: 增加 Logo 容器的高度，給圖片更多顯示空間
+      width: 300, // 保持寬度為 300，與下方卡片對齊
       child: Image.asset(
         'assets/logo.png', // 確保這是你的 Logo 圖片正確路徑
-        height: 100, // 實際圖片高度
-        fit: BoxFit.contain,
+        width: 300, // 保持圖片寬度為 300
+        // height: 100, // 移除固定的 height，讓 BoxFit 決定高度
+        fit: BoxFit.contain, // 🎯 調整處: 使用 BoxFit.contain 確保圖片完整顯示不裁切
       ),
     );
   }
@@ -38,25 +41,25 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFD9EAD3),
-        body: SafeArea( // 💡 修正 2: 將 SafeArea 放在 body 內
+        backgroundColor: _kLightGreenBg,
+        body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30), // 調整頂部間距
-                  _buildLogo(), // 💡 修正 1: 替換原來的 Text('LOGO')
+                  _buildLogo(),
                   const SizedBox(height: 20), // 縮小 Logo 與下方卡片的間距
 
                   Container(
-                    width: 300,
+                    width: 300, // 註冊/登入卡片的寬度
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9), // 稍微調高透明度
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
-                         BoxShadow(
+                          BoxShadow(
                           color: Colors.black.withOpacity(0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 5),

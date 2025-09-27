@@ -115,10 +115,10 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const SizedBox(height: 50),
+                          const SizedBox(height: 10),
                           // 1. LOGO 區塊
                           _buildLogo(), 
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
                           
                           // 2. 表單與操作卡片
                           _buildProfileCard(context),
@@ -142,7 +142,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
 
 Widget _buildLogo() {
   return SizedBox(
-    height: 150, 
+    height: 200, 
     width: double.infinity, // 確保父層容器佔滿可用寬度
     child: Center(
       child: Image.asset(

@@ -25,13 +25,12 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
   // 💡 Logo 區塊 Helper
   Widget _buildLogo() {
     return SizedBox( // 將 Container 改為 SizedBox，更簡潔
-      height: 150, // 🎯 調整處: 增加 Logo 容器的高度，給圖片更多顯示空間
+      height: 150, // 調整處: 增加 Logo 容器的高度，給圖片更多顯示空間
       width: 300, // 保持寬度為 300，與下方卡片對齊
       child: Image.asset(
         'assets/logo.png', // 確保這是你的 Logo 圖片正確路徑
         width: 300, // 保持圖片寬度為 300
-        // height: 100, // 移除固定的 height，讓 BoxFit 決定高度
-        fit: BoxFit.contain, // 🎯 調整處: 使用 BoxFit.contain 確保圖片完整顯示不裁切
+        fit: BoxFit.contain, // 調整處: 使用 BoxFit.contain 確保圖片完整顯示不裁切
       ),
     );
   }
@@ -59,7 +58,7 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
                       color: Colors.white.withOpacity(0.9), // 稍微調高透明度
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
-                          BoxShadow(
+                        BoxShadow(
                           color: Colors.black.withOpacity(0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
@@ -210,7 +209,7 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 }
 
-// --- 登入表單 (保持不變) ---
+// --- 登入表單 (已修改且縮排完成) ---
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
 
@@ -245,15 +244,11 @@ class _LoginFormState extends State<LoginForm> {
             );
 
             if (user != null && mounted) {
-              // 成功登入後導航到 MemberProfilePage
+              // 成功登入後導航到 ScanningPicturePage
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MemberProfilePage(
-                    userId: user['id'] as int,
-                    userName: user['name'] as String,
-                    token: user['token'] as String,
-                  ),
+                  builder: (context) => const ScanningPicturePage(),
                 ),
               );
             } else if (mounted) {

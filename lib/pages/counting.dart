@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
 
-
 class LoadingPage extends StatefulWidget {
   const LoadingPage({super.key});
 
@@ -14,8 +13,10 @@ class _LoadingPageState extends State<LoadingPage> {
   void initState() {
     super.initState();
     saveCurrentRoute('/counting'); // 記錄當前頁面
-    // 模擬計算，2秒後跳轉到結果頁
+
+    // 模擬計算，2秒後跳轉到結果頁（加上 mounted 檢查）
     Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/countingResult');
     });
   }
@@ -28,17 +29,27 @@ class _LoadingPageState extends State<LoadingPage> {
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text(
-                'LOGO',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF274E13), // 深綠
+            children: [
+              // 從 assets 載入 logo.png，失敗時回退為文字
+              SizedBox(
+                height: 80,
+                child: Image.asset(
+                  'assets/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Text(
+                      'LOGO',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF274E13), // 深綠
+                      ),
+                    );
+                  },
                 ),
               ),
-              SizedBox(height: 30),
-              Text(
+              const SizedBox(height: 30),
+              const Text(
                 '價格計算中...',
                 style: TextStyle(
                   fontSize: 22,
@@ -46,8 +57,8 @@ class _LoadingPageState extends State<LoadingPage> {
                   color: Colors.black87,
                 ),
               ),
-              SizedBox(height: 10),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 '請稍待',
                 style: TextStyle(
                   fontSize: 16,

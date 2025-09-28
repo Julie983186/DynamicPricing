@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
       ],
 
       // 應用程式永遠從 /splash 啟動
-      initialRoute: '/member_area',
+      initialRoute: '/splash',
       routes: {
         // ------------------ 啟動畫面路由 ------------------
         '/splash': (context) => const SplashScreen(),

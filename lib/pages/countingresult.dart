@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'adviceproduct.dart';
 import '../services/route_logger.dart';
-import 'register_login_page.dart'; // 登入 / 註冊頁面
+import 'register_login_page.dart';
+import 'scanning_picture_page.dart';
 
 class CountingResult extends StatefulWidget {
   const CountingResult({super.key});
@@ -11,84 +12,10 @@ class CountingResult extends StatefulWidget {
 }
 
 class _CountingResultState extends State<CountingResult> {
-  bool _hasShownGuestDialog = false;
-
   @override
   void initState() {
     super.initState();
     saveCurrentRoute('/countingResult'); // 記錄當前頁面
-
-    // 等畫面 build 完再顯示 dialog（這樣才能拿到 context）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isGuest() && !_hasShownGuestDialog) {
-        _hasShownGuestDialog = true;
-        _showGuestDialog();
-      }
-    });
-  }
-
-  // TODO: 這裡示範性地回傳 true 表示是訪客。
-  // 在實務上請改成你的真實判斷，例如從 Provider、SharedPreferences、或 FirebaseAuth 檢查使用者是否為訪客。
-  bool _isGuest() {
-    // 範例：假設目前為訪客，請改成實際邏輯
-    return true;
-  }
-
-  // 若使用者選擇「保留」，可以在這裡呼叫儲存掃描紀錄的函式
-  Future<void> _saveScanRecord() async {
-    // TODO: 在此實作儲存掃描紀錄（例如呼叫 API、寫入 local DB）
-    debugPrint('掃描紀錄已儲存（範例）');
-  }
-
-  // 若使用者選擇「不保留」，可以在這裡處理捨棄邏輯
-  Future<void> _discardScanRecord() async {
-    // TODO: 在此實作捨棄掃描紀錄的必要流程（例如不送出、不寫入資料庫）
-    debugPrint('掃描紀錄已捨棄（範例）');
-  }
-
-  void _showGuestDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // 點背景不會關閉
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？"),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // 關閉 dialog
-                await _discardScanRecord();
-                // 維持在 countingresult.dart（不做其他跳轉）
-              },
-              child: const Text("不保留"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // 關閉 dialog
-                // 前往登入/註冊頁面（可用 push 或 pushReplacement）
-                // 這裡示範 push，註冊完成可用 Navigator.pop(context, true) 回傳結果
-                final result = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterLoginPage(),
-                  ),
-                );
-
-                // 如果 RegisterLoginPage 回傳 true 表示註冊/登入成功並要儲存該筆掃描紀錄
-                if (result == true) {
-                  await _saveScanRecord();
-                } else {
-                  // 使用者可能沒有完成註冊/登入，視需求處理
-                  debugPrint('RegisterLoginPage 回傳: $result');
-                }
-              },
-              child: const Text("保留"),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -112,32 +39,55 @@ class _CountingResultState extends State<CountingResult> {
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
+                      children: [
+                        // 左側訪客圖示（因中間使用非 const 圖片，此處不能再是 const）
                         Column(
-                          children: [
+                          children: const [
                             Icon(Icons.person, size: 32, color: Colors.black87),
                             SizedBox(height: 4),
-                            Text("訪客",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500)),
+                            Text(
+                              "訪客",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
-                        Text(
-                          'LOGO',
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF274E13),
+
+                        // 中間：從 assets 載入 logo.png，失敗時顯示文字回退
+                        SizedBox(
+                          height: 48,
+                          child: Image.asset(
+                            'assets/logo.png',
+                            fit: BoxFit.contain,
+                            // 如果載入失敗，顯示文字回退
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Text(
+                                'LOGO',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF274E13),
+                                ),
+                              );
+                            },
                           ),
                         ),
-                        Icon(Icons.fullscreen, size: 30, color: Colors.black87),
+
+                        // 可點擊的 Icon
+                        IconButton(
+                          icon: const Icon(Icons.fullscreen,
+                              size: 30, color: Colors.black87),
+                          onPressed: () {
+                            _showSaveDialog(context);
+                          },
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
-
                   // --- 商品卡片 ---
                   Container(
                     width: 330,
@@ -173,7 +123,6 @@ class _CountingResultState extends State<CountingResult> {
                               TextStyle(fontSize: 16, color: Colors.black87),
                         ),
                         const SizedBox(height: 16),
-
                         // --- 價格比對 ---
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -209,7 +158,6 @@ class _CountingResultState extends State<CountingResult> {
                 ],
               ),
             ),
-
             // 下方可拖曳的推薦商品區塊
             DraggableScrollableSheet(
               initialChildSize: 0.25,
@@ -219,7 +167,8 @@ class _CountingResultState extends State<CountingResult> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -228,7 +177,8 @@ class _CountingResultState extends State<CountingResult> {
                       ),
                     ],
                   ),
-                  child: AdviceProductList(scrollController: scrollController),
+                  child:
+                      AdviceProductList(scrollController: scrollController),
                 );
               },
             ),
@@ -238,7 +188,46 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
+  // 彈出提示框
+  void _showSaveDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("提示"),
+          content: const Text("是否要保留該筆掃描紀錄？"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // 關閉對話框
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ScanningPicturePage()),
+                );
+              },
+              child: const Text("不保留"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // 關閉對話框
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const RegisterLoginPage()),
+                );
+              },
+              child: const Text("保留"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 價格區塊 UI
+  Widget buildPriceBox(String title, String price,
+      {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(
@@ -272,4 +261,3 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 }
-

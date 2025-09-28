@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/route_logger.dart';
 
-
 class RecognitionLoadingPage extends StatefulWidget {
   const RecognitionLoadingPage({super.key});
 
@@ -25,31 +24,32 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD3F3DA),
+      backgroundColor: const Color(0xFFE8F5E9),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Text(
-              'LOGO',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
+          children: [
+            // LOGO
+            Image.asset(
+              'assets/logo.png',
+              height: 140,
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 40),
+
+            // text
+            const Text(
               '辨識進行中...',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
-            Text(
+            const SizedBox(height: 10),
+            const Text(
               '請稍待',
               style: TextStyle(fontSize: 16, color: Colors.black54),
             ),
-            SizedBox(height: 30),
-            CircularProgressIndicator(color: Colors.green),
+            const SizedBox(height: 30),
+
+            // loading indicator
+            const CircularProgressIndicator(color: Colors.green),
           ],
         ),
       ),

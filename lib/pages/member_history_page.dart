@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
+import 'scanning_picture_page.dart';
+
 
 // 定義顏色常量 (使用與其他頁面一致的色系)
 const Color _kPrimaryGreen = Color(0xFF388E3C);
@@ -11,10 +13,11 @@ const Color _kCardBg = Color(0xFFF1F8E9); // 卡片背景色
 const Color _kAccentRed = Color(0xFFD32F2F); // 價格/刪除紅色
 
 class MemberHistoryPage extends StatefulWidget {
-  final int userId;      // 會員 ID, 訪客用 0
-  final String? token;   // JWT token, 訪客為 null
+  final int? userId;
+  final String? userName;
+  final String? token;
 
-  const MemberHistoryPage({Key? key, required this.userId, this.token}) : super(key: key);
+  const MemberHistoryPage({super.key, this.userId, this.userName, this.token});
 
   @override
   State<MemberHistoryPage> createState() => _MemberHistoryPageState();
@@ -231,7 +234,16 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           ),
           IconButton(
             icon: const Icon(Icons.fullscreen, color: _kPrimaryGreen), 
-            onPressed: () => Navigator.pushNamed(context, '/scan'), 
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScanningPicturePage(
+                  userId: widget.userId!,
+                  userName: widget.userName!,
+                  token: widget.token!,
+                ),
+              ),
+            ), 
           ),
         ],
       ),
@@ -316,7 +328,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                     borderRadius: BorderRadius.circular(5),
                     image: (product['ImageUrl'] != null)
                       ? DecorationImage(
-                          image: NetworkImage(product['ImageUrl']),
+                          image: AssetImage('assets/milk.jpg'),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -348,8 +360,8 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                 const SizedBox(height: 5),
                 _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
                 _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
-                _buildPriceRow('原價', '\$${originalPrice}', isOriginal: true),
-                _buildPriceRow('建議價格', '\$${suggestedPrice}', isOriginal: false),
+                _buildPriceRow('即期價格', '\$${originalPrice}', isOriginal: true),
+                _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: false),
               ],
             ),
           ),

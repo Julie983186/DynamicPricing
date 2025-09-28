@@ -2,14 +2,20 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/route_logger.dart';
+import 'recognition_result_page.dart';
 
 
 class RecognitionLoadingPage extends StatefulWidget {
-  const RecognitionLoadingPage({super.key});
+  final int? userId;
+  final String? userName;
+  final String? token;
+
+  const RecognitionLoadingPage({super.key, this.userId, this.userName, this.token});
 
   @override
   State<RecognitionLoadingPage> createState() => _RecognitionLoadingPageState();
 }
+
 
 class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
   @override
@@ -18,7 +24,16 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
     saveCurrentRoute('/loading'); // 記錄當前頁面
     // 3秒後結果確認
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/resultCheck');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RecognitionResultPage(
+            userId: widget.userId,
+            userName: widget.userName,
+            token: widget.token,
+          ),
+        ),
+      );
     });
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
+import 'member_profile_page.dart'; 
 
 
 class MemberEditPage extends StatefulWidget {

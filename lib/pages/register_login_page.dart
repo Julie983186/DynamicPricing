@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'member_profile_page.dart';
 import 'scanning_picture_page.dart';
+import 'countingresult.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
 
@@ -238,18 +239,17 @@ class _LoginFormState extends State<LoginForm> {
         const SizedBox(height: 20),
         ElevatedButton(
           onPressed: () async {
-            // 假設 loginUser 是一個非同步 API 呼叫
             final user = await loginUser(
               emailController.text,
               passwordController.text,
             );
 
             if (user != null && mounted) {
-              // 成功登入後導航到 MemberProfilePage
+              // 成功登入 → 跳到 ScanningPicturePage 並帶參數
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MemberProfilePage(
+                  builder: (context) => ScanningPicturePage(
                     userId: user['id'] as int,
                     userName: user['name'] as String,
                     token: user['token'] as String,

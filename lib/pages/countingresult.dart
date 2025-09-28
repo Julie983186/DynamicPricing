@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
 import 'adviceproduct.dart';
 import '../services/route_logger.dart';
-import 'register_login_page.dart'; // 登入 / 註冊頁面
+import 'register_login_page.dart';
+import 'member_profile_page.dart';
+import 'scanning_picture_page.dart';
 
 class CountingResult extends StatefulWidget {
-  const CountingResult({super.key});
+  final int? userId;
+  final String? userName;
+  final String? token;
+
+  const CountingResult({
+    super.key,
+    this.userId,
+    this.userName,
+    this.token,
+  });
 
   @override
   State<CountingResult> createState() => _CountingResultState();
@@ -16,40 +27,26 @@ class _CountingResultState extends State<CountingResult> {
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/countingResult'); // 記錄當前頁面
-
-    // 等畫面 build 完再顯示 dialog（這樣才能拿到 context）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isGuest() && !_hasShownGuestDialog) {
-        _hasShownGuestDialog = true;
-        _showGuestDialog();
-      }
-    });
+    saveCurrentRoute('/countingResult');
   }
 
-  // TODO: 這裡示範性地回傳 true 表示是訪客。
-  // 在實務上請改成你的真實判斷，例如從 Provider、SharedPreferences、或 FirebaseAuth 檢查使用者是否為訪客。
-  bool _isGuest() {
-    // 範例：假設目前為訪客，請改成實際邏輯
-    return true;
-  }
+  bool _isGuest() => widget.userId == null || widget.token == null;
 
-  // 若使用者選擇「保留」，可以在這裡呼叫儲存掃描紀錄的函式
   Future<void> _saveScanRecord() async {
-    // TODO: 在此實作儲存掃描紀錄（例如呼叫 API、寫入 local DB）
     debugPrint('掃描紀錄已儲存（範例）');
   }
 
-  // 若使用者選擇「不保留」，可以在這裡處理捨棄邏輯
   Future<void> _discardScanRecord() async {
-    // TODO: 在此實作捨棄掃描紀錄的必要流程（例如不送出、不寫入資料庫）
     debugPrint('掃描紀錄已捨棄（範例）');
   }
 
   void _showGuestDialog() {
+    if (_hasShownGuestDialog) return; // 防止重複彈出
+    _hasShownGuestDialog = true;
+
     showDialog(
       context: context,
-      barrierDismissible: false, // 點背景不會關閉
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
@@ -57,30 +54,20 @@ class _CountingResultState extends State<CountingResult> {
           actions: [
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop(); // 關閉 dialog
+                Navigator.of(context).pop();
                 await _discardScanRecord();
-                // 維持在 countingresult.dart（不做其他跳轉）
               },
               child: const Text("不保留"),
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(context).pop(); // 關閉 dialog
-                // 前往登入/註冊頁面（可用 push 或 pushReplacement）
-                // 這裡示範 push，註冊完成可用 Navigator.pop(context, true) 回傳結果
+                Navigator.of(context).pop();
                 final result = await Navigator.push<bool>(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterLoginPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
                 );
-
-                // 如果 RegisterLoginPage 回傳 true 表示註冊/登入成功並要儲存該筆掃描紀錄
                 if (result == true) {
                   await _saveScanRecord();
-                } else {
-                  // 使用者可能沒有完成註冊/登入，視需求處理
-                  debugPrint('RegisterLoginPage 回傳: $result');
                 }
               },
               child: const Text("保留"),
@@ -88,7 +75,10 @@ class _CountingResultState extends State<CountingResult> {
           ],
         );
       },
-    );
+    ).then((_) {
+      // 關閉後允許下次再觸發
+      _hasShownGuestDialog = false;
+    });
   }
 
   @override
@@ -107,24 +97,49 @@ class _CountingResultState extends State<CountingResult> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // --- 上方 LOGO 與 icons ---
+                  // 上方 LOGO 與 icons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Column(
-                          children: [
-                            Icon(Icons.person, size: 32, color: Colors.black87),
-                            SizedBox(height: 4),
-                            Text("訪客",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w500)),
-                          ],
+                      children: [
+                        // 左上角會員 / 訪客 icon
+                        GestureDetector(
+                          onTap: () {
+                            if (_isGuest()) {
+                              Navigator.pushNamed(context, '/login');
+                            } else {
+                              Navigator.pushNamed(
+                                context,
+                                '/member_profile',
+                                arguments: {
+                                  'userId': widget.userId!,
+                                  'userName': widget.userName!,
+                                  'token': widget.token!,
+                                },
+                              );
+                            }
+                          },
+                          child: Column(
+                            children: [
+                              const Icon(Icons.account_circle,
+                                  size: 32, color: Colors.black87),
+                              const SizedBox(height: 4),
+                              Text(
+                                _isGuest()
+                                    ? "訪客"
+                                    : (widget.userName ?? "會員"),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
+
+                        const Text(
                           'LOGO',
                           style: TextStyle(
                             fontSize: 36,
@@ -132,13 +147,34 @@ class _CountingResultState extends State<CountingResult> {
                             color: Color(0xFF274E13),
                           ),
                         ),
-                        Icon(Icons.fullscreen, size: 30, color: Colors.black87),
+
+                        // 右上角再次掃描 icon
+                        GestureDetector(
+                          onTap: () {
+                            if (_isGuest()) {
+                              _showGuestDialog();
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScanningPicturePage(
+                                    userId: widget.userId,
+                                    userName: widget.userName,
+                                    token: widget.token,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Icon(Icons.fullscreen,
+                              size: 30, color: Colors.black87),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // --- 商品卡片 ---
+                  // 商品卡片
                   Container(
                     width: 330,
                     padding: const EdgeInsets.all(16),
@@ -169,12 +205,10 @@ class _CountingResultState extends State<CountingResult> {
                         const SizedBox(height: 6),
                         const Text(
                           "有效期限：2025-05-25",
-                          style:
-                              TextStyle(fontSize: 16, color: Colors.black87),
+                          style: TextStyle(
+                              fontSize: 16, color: Colors.black87),
                         ),
                         const SizedBox(height: 16),
-
-                        // --- 價格比對 ---
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
@@ -210,7 +244,7 @@ class _CountingResultState extends State<CountingResult> {
               ),
             ),
 
-            // 下方可拖曳的推薦商品區塊
+            // 推薦商品
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               minChildSize: 0.15,
@@ -219,7 +253,8 @@ class _CountingResultState extends State<CountingResult> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -228,7 +263,8 @@ class _CountingResultState extends State<CountingResult> {
                       ),
                     ],
                   ),
-                  child: AdviceProductList(scrollController: scrollController),
+                  child:
+                      AdviceProductList(scrollController: scrollController),
                 );
               },
             ),
@@ -238,7 +274,8 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
+  Widget buildPriceBox(String title, String price,
+      {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(
@@ -263,7 +300,8 @@ class _CountingResultState extends State<CountingResult> {
                 fontSize: isDiscount ? 26 : 24,
                 fontWeight: FontWeight.bold,
                 color: isDiscount ? Colors.deepOrange : Colors.black,
-                decoration: isDiscount ? null : TextDecoration.lineThrough,
+                decoration:
+                    isDiscount ? null : TextDecoration.lineThrough,
               ),
             ),
           ],
@@ -272,4 +310,3 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 }
-

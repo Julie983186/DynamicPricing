@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
+import 'countingresult.dart';
+
 
 
 class LoadingPage extends StatefulWidget {
-  const LoadingPage({super.key});
+  final int? userId;
+  final String? userName;
+  final String? token;
+
+  const LoadingPage({super.key, this.userId, this.userName, this.token});
 
   @override
   State<LoadingPage> createState() => _LoadingPageState();
@@ -16,7 +22,16 @@ class _LoadingPageState extends State<LoadingPage> {
     saveCurrentRoute('/counting'); // 記錄當前頁面
     // 模擬計算，2秒後跳轉到結果頁
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(context, '/countingResult');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CountingResult(
+            userId: widget.userId,
+            userName: widget.userName,
+            token: widget.token,
+          ),
+        ),
+      );
     });
   }
 

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
-
+import 'counting.dart';
 
 class RecognitionEditPage extends StatefulWidget {
-  const RecognitionEditPage({super.key});
+  final int? userId;
+  final String? userName;
+  final String? token;
+
+  const RecognitionEditPage({super.key, this.userId, this.userName, this.token});
 
   @override
   State<RecognitionEditPage> createState() => _RecognitionEditPageState();
@@ -72,7 +76,16 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/counting');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LoadingPage(
+                      userId: widget.userId,
+                      userName: widget.userName,
+                      token: widget.token,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,

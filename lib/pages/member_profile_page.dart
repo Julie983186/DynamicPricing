@@ -39,7 +39,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
     _loadUserData();
-    saveCurrentRoute('/member_area');
+    saveCurrentRoute('/member_profile');
   }
 
   @override

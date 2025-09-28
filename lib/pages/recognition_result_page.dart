@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
+import 'counting.dart';
+import 'scanning_picture_page.dart';
+import 'recognition_edit_page.dart';
+
 
 class RecognitionResultPage extends StatefulWidget {
-  const RecognitionResultPage({super.key});
+  final int? userId;
+  final String? userName;
+  final String? token;
+
+  const RecognitionResultPage({
+    super.key,
+    this.userId,
+    this.userName,
+    this.token,
+  });
 
   @override
   State<RecognitionResultPage> createState() => _RecognitionResultPageState();
@@ -58,9 +71,19 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
               ),
             ),
             const SizedBox(height: 20),
+
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/counting');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LoadingPage(
+                      userId: widget.userId,
+                      userName: widget.userName,
+                      token: widget.token,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
@@ -69,9 +92,19 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
               child: const Text('正確'),
             ),
             const SizedBox(height: 10),
+
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/edit');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RecognitionEditPage(
+                      userId: widget.userId,
+                      userName: widget.userName,
+                      token: widget.token,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -80,9 +113,19 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
               child: const Text('手動修改'),
             ),
             const SizedBox(height: 10),
+
             ElevatedButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/scan');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ScanningPicturePage(
+                      userId: widget.userId,
+                      userName: widget.userName,
+                      token: widget.token,
+                    ),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.lightBlue,

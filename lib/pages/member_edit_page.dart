@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
-import 'member_profile_page.dart'; 
-
+import 'member_profile_page.dart';
 
 class MemberEditPage extends StatefulWidget {
   final int userId;
+  final String userName;
+  final String phone;
+  final String email;
   final String token;
 
-  const MemberEditPage({Key? key, required this.userId, required this.token}) : super(key: key);
+  const MemberEditPage({
+    super.key,
+    required this.userId,
+    required this.userName,
+    required this.phone,
+    required this.email,
+    required this.token,
+  });
 
   @override
   State<MemberEditPage> createState() => _MemberEditPageState();
@@ -19,38 +28,23 @@ class _MemberEditPageState extends State<MemberEditPage> {
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _phoneController = TextEditingController();
-    _emailController = TextEditingController();
-    _passwordController = TextEditingController();
-    _loadUserData();
-    saveCurrentRoute('/member_edit'); // 記錄當前頁面
-  }
+    saveCurrentRoute('/member_edit');
 
-  Future<void> _loadUserData() async {
-    final userData = await fetchUserData(widget.userId, widget.token);
-    if (userData != null) {
-      setState(() {
-        _nameController.text = userData['name'] ?? '';
-        _phoneController.text = userData['phone'] ?? '';
-        _emailController.text = userData['email'] ?? '';
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('載入會員資料失敗'), backgroundColor: Colors.red),
-      );
-    }
+    _nameController = TextEditingController(text: widget.userName);
+    _phoneController = TextEditingController(text: widget.phone);
+    _emailController = TextEditingController(text: widget.email);
+    _passwordController = TextEditingController();
   }
 
   Future<void> _saveChanges() async {
-    bool success = await updateUserData(
+    setState(() => _isLoading = true);
+
+    final success = await updateUserData(
       userId: widget.userId,
       token: widget.token,
       name: _nameController.text.isNotEmpty ? _nameController.text : null,
@@ -59,11 +53,13 @@ class _MemberEditPageState extends State<MemberEditPage> {
       password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
     );
 
+    setState(() => _isLoading = false);
+
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context, _nameController.text); // 回傳更新後的名稱
+      Navigator.pop(context, true); // ✅ 通知 Profile 要 reload
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('更新失敗'), backgroundColor: Colors.red),
@@ -173,7 +169,10 @@ class _MemberEditPageState extends State<MemberEditPage> {
             obscureText: obscureText,
             decoration: InputDecoration(
               hintText: hintText,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8.0),
+                borderSide: BorderSide.none,
+              ),
               filled: true,
               fillColor: Colors.white,
             ),

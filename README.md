@@ -334,7 +334,7 @@ import 'pages/recognition_loading_page.dart';
 import 'pages/recognition_result_page.dart';
 import 'pages/recognition_edit_page.dart';
 import 'pages/register_login_page.dart';  // 引入登入註冊頁
-import 'pages/member_area_page.dart';    // 引入會員專區頁
+
 import 'pages/home_page.dart';            // 引入首頁
 import 'pages/counting.dart';
 import 'pages/countingresult.dart';
@@ -654,7 +654,7 @@ Widget buildTextField(String label, {bool obscureText = false, TextEditingContro
   );
 }
 
-//member_area_page.dart
+
 
 import 'package:flutter/material.dart';
 import 'member_edit_page.dart'; // 引入 member_edit_page.dart 檔案

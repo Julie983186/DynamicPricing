@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
       ],
 
       // 應用程式永遠從 /splash 啟動
-      initialRoute: '/member_profile',
+      initialRoute: '/splash',
       routes: {
         // ------------------ 啟動畫面路由 ------------------
         '/splash': (context) => const SplashScreen(),
@@ -64,6 +64,17 @@ class MyApp extends StatelessWidget {
           );
         },
         
+        '/member_edit': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return MemberEditPage(
+            userId: args['userId'],
+            userName: args['userName'],
+            phone: args['phone'],
+            email: args['email'],
+            token: args['token'],
+          );
+        },
+
         // ------------------ 掃描與識別路由 (保持不變) ------------------
         '/scan': (context) => ScanningPicturePage(),
         '/counting': (context) => LoadingPage(),

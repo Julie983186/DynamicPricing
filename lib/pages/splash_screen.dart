@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart'; // 確保路徑正確
 
+// 🎯 背景色常量
+const Color _kSplashBackgroundColor = Color(0xFFFAF0D3); 
+const Color _kPrimaryGreen = Color(0xFF2E7D32); // 此常量不再用於載入圖，但保留
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,8 +22,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   // 設定跳轉邏輯
   void _navigateToNextScreen() async {
-    // 延遲 3 秒後自動跳轉
-    await Future.delayed(const Duration(seconds: 3));
+    // 延遲 10 秒後自動跳轉
+    await Future.delayed(const Duration(seconds: 20));
 
     if (mounted) {
       // 使用 pushReplacementNamed 跳轉到登入頁面，並清除當前路由
@@ -29,42 +33,28 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 這裡我們使用一個簡單的、與你的 LOGO 主題相符的背景
-    // 你可以替換為你的資產圖片，如果你的圖片路徑是 'assets/splash_image.jpg'
     
-    // 假設你的 LOGO 圖片（如你上傳的 `image_171c04.jpg` 所示）
-    // 已經放在 assets 資料夾中，並且你已在 pubspec.yaml 中註冊該資料夾。
-    
-    // 如果你沒有使用圖片，則使用純色背景和文字 LOGO
     return Scaffold(
-      // 背景色使用與圖片相符的淺黃/淺綠色調
-      backgroundColor: const Color(0xFFF0F5D8), 
+      // 🎯 使用背景色常量
+      backgroundColor: _kSplashBackgroundColor, 
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center, // 保持 Logo 垂直置中
           children: [
-            // 這是使用圖片資產的方法（請確保路徑正確）
+            // 圖片資產 (Logo)
             Image.asset(
-              'assets/splash_background.jpg', // 💡 請確認你的啟動畫面圖片路徑！
-              height: 300,
-              fit: BoxFit.contain,
+              'assets/splash_background.jpg', 
+              // 💡 調整高度到 400，您可以根據需要再微調
+              height: 875, 
+              fit: BoxFit.contain, // 保持圖片完整顯示，不裁切
             ),
             
-            // 如果不想用圖片，只想用文字和顏色
-            /*
-            const Text(
-              '碳即',
-              style: TextStyle(
-                fontSize: 60,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E7D32),
-              ),
-            ),
-            */
-            const SizedBox(height: 50),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
-            ),
+            // 🎯 核心修正: 移除 SizedBox 和 CircularProgressIndicator
+            // 
+            // 之前的程式碼:
+            // const SizedBox(height: 50),
+            // CircularProgressIndicator(...)
+            
           ],
         ),
       ),

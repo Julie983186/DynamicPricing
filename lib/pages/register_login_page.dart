@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'member_profile_page.dart';
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
 
 // 💡 新增: 定義會員頁面的淺綠色背景
 const Color _kLightGreenBg = Color(0xFFE8F5E9); 
+const Color _kPrimaryGreen = Color(0xFF388E3C); // 定義綠色方便 TabBar 使用
+const Color _kAccentOrange = Colors.orange; // 註冊/登入按鈕使用
 
 // 註冊與登入頁面
 class RegisterLoginPage extends StatefulWidget {
@@ -19,19 +20,19 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/login'); // 記錄當前頁面
+    // 💡 確保導航到登入頁面時，可以正確記錄路徑
+    saveCurrentRoute('/login'); 
   }
 
   // 💡 Logo 區塊 Helper
   Widget _buildLogo() {
-    return SizedBox( // 將 Container 改為 SizedBox，更簡潔
-      height: 150, // 🎯 調整處: 增加 Logo 容器的高度，給圖片更多顯示空間
-      width: 300, // 保持寬度為 300，與下方卡片對齊
+    return SizedBox( 
+      height: 150, 
+      width: 300, 
       child: Image.asset(
         'assets/logo.png', // 確保這是你的 Logo 圖片正確路徑
-        width: 300, // 保持圖片寬度為 300
-        // height: 100, // 移除固定的 height，讓 BoxFit 決定高度
-        fit: BoxFit.contain, // 🎯 調整處: 使用 BoxFit.contain 確保圖片完整顯示不裁切
+        width: 300, 
+        fit: BoxFit.contain, // 確保圖片完整顯示不裁切
       ),
     );
   }
@@ -59,7 +60,7 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
                       color: Colors.white.withOpacity(0.9), // 稍微調高透明度
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
-                          BoxShadow(
+                        BoxShadow(
                           color: Colors.black.withOpacity(0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
@@ -70,22 +71,27 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
                       children: [
                         const TabBar(
                           labelColor: Colors.black,
-                          indicatorColor: Colors.green,
+                          indicatorColor: _kPrimaryGreen,
                           tabs: [
                             Tab(text: '註冊會員'),
                             Tab(text: '會員登入'),
                           ],
                         ),
                         const SizedBox(height: 20),
-                        const SizedBox(
-                          height: 400,
-                          child: TabBarView(
+                        
+                        // 🎯 核心修正 1: 確保 TabBarView 有固定的高度
+                        SizedBox( 
+                          height: 330, // 固定的高度，確保按鈕能對齊
+                          child: const TabBarView(
+                            physics: NeverScrollableScrollPhysics(), 
                             children: [
                               RegisterForm(),
                               LoginForm(),
                             ],
                           ),
                         ),
+                        
+                        const SizedBox(height: 20), 
                         OutlinedButton(
                           onPressed: () {
                             Navigator.pushReplacement(
@@ -135,7 +141,7 @@ Widget buildTextField(String label, {bool obscureText = false, TextEditingContro
   );
 }
 
-// --- 註冊表單 (保持不變) ---
+// --- 註冊表單 (已修正) ---
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
 
@@ -161,16 +167,21 @@ class _RegisterFormState extends State<RegisterForm> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      // 確保 Column 撐滿外層 SizedBox 的高度
       children: [
         buildTextField('姓名', controller: nameController),
         buildTextField('電話', controller: phoneController),
         buildTextField('Email', controller: emailController),
         buildTextField('密碼', controller: passwordController, obscureText: true),
-        const SizedBox(height: 20),
+        
+        // 🎯 修正: 移除原先按鈕上方的 SizedBox(height: 20)
+        // 🎯 核心修正 2: 使用 Spacer 將「註冊」按鈕推到最下方
+        const Spacer(), 
+        
         ElevatedButton(
           onPressed: () async {
+            // 註冊邏輯...
             try {
-              // 假設 registerUser 是一個非同步 API 呼叫
               bool isSuccess = await registerUser(
                 nameController.text,
                 phoneController.text,
@@ -182,7 +193,6 @@ class _RegisterFormState extends State<RegisterForm> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('註冊成功！請重新登入'), backgroundColor: Colors.green),
                 );
-                // 成功後跳轉到登入分頁
                 await Future.delayed(const Duration(seconds: 2));
                 DefaultTabController.of(context)?.animateTo(1);
               } else if (mounted) {
@@ -199,18 +209,19 @@ class _RegisterFormState extends State<RegisterForm> {
             }
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
+            backgroundColor: _kAccentOrange,
             minimumSize: const Size(double.infinity, 50),
           ),
           child: const Text('註冊'),
         ),
-        const SizedBox(height: 10),
+        // 🎯 核心修正 3: 將按鈕下方的間距縮小
+        const SizedBox(height: 5),
       ],
     );
   }
 }
 
-// --- 登入表單 (保持不變) ---
+// --- 登入表單 (已修正) ---
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
 
@@ -232,28 +243,28 @@ class _LoginFormState extends State<LoginForm> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      // 確保 Column 撐滿外層 SizedBox 的高度
       children: [
         buildTextField('Email', controller: emailController),
         buildTextField('密碼', controller: passwordController, obscureText: true),
-        const SizedBox(height: 20),
+        
+        // 🎯 修正: 移除原先按鈕上方的 SizedBox(height: 20)
+        // 🎯 核心修正 2: 使用 Spacer 將「登入」按鈕推到最下方
+        const Spacer(), 
+        
         ElevatedButton(
           onPressed: () async {
-            // 假設 loginUser 是一個非同步 API 呼叫
+            // 登入邏輯...
             final user = await loginUser(
               emailController.text,
               passwordController.text,
             );
 
             if (user != null && mounted) {
-              // 成功登入後導航到 MemberProfilePage
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MemberProfilePage(
-                    userId: user['id'] as int,
-                    userName: user['name'] as String,
-                    token: user['token'] as String,
-                  ),
+                  builder: (context) => const ScanningPicturePage(),
                 ),
               );
             } else if (mounted) {
@@ -263,12 +274,13 @@ class _LoginFormState extends State<LoginForm> {
             }
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
+            backgroundColor: _kAccentOrange,
             minimumSize: const Size(double.infinity, 50),
           ),
           child: const Text('登入'),
         ),
-        const SizedBox(height: 10),
+        // 🎯 核心修正 3: 將按鈕下方的間距縮小
+        const SizedBox(height: 5),
       ],
     );
   }

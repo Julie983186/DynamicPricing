@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'dart:io';
 import '../services/route_logger.dart';
 import 'recognition_loading_page.dart';
 import 'member_profile_page.dart';
 import 'register_login_page.dart';
-
 
 class ScanningPicturePage extends StatefulWidget {
   final int? userId;
@@ -25,102 +23,55 @@ class ScanningPicturePage extends StatefulWidget {
 
 class _ScanningPicturePageState extends State<ScanningPicturePage>
     with TickerProviderStateMixin {
-  CameraController? _cameraController;
+  late Future<CameraController> _cameraControllerFuture;
   late AnimationController _animationController;
-  bool _isCameraInitialized = false;
-  String? _selectedStore;
-
-  // 拍照閃光效果
   bool _isFlashing = false;
+  bool _isUploading = false;
+  String? _selectedStore;
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
-    _initializeAnimation();
     saveCurrentRoute('/scan');
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // 👉 回到這頁時，如果相機被清掉就重新初始化
-    if (_cameraController == null) {
-      _initializeCamera();
-    }
-  }
-
-  Future<void> _initializeCamera() async {
-    try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        print('沒有可用的相機');
-        return;
-      }
-
-      final backCamera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
-
-      _cameraController = CameraController(
-        backCamera,
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-
-      await _cameraController!.initialize();
-      if (!mounted) return;
-      setState(() {
-        _isCameraInitialized = true;
-      });
-    } on CameraException catch (e) {
-      print('相機初始化錯誤: $e');
-    }
-  }
-
-  void _initializeAnimation() {
+    _cameraControllerFuture = _initCameraController();
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
   }
 
-  @override
-  void dispose() {
-    _cameraController?.dispose();
-    _animationController.dispose();
-    super.dispose();
+  Future<CameraController> _initCameraController() async {
+    final cameras = await availableCameras();
+    final backCamera = cameras.firstWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+
+    final controller = CameraController(
+      backCamera,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+    await controller.initialize();
+    return controller;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isCameraInitialized) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      );
-    }
-
     final screenWidth = MediaQuery.of(context).size.width;
     const double maxContentWidth = 400;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        // === 根據你的要求，調整 Logo 寬度為螢幕最大可用寬度 START ===
         title: SizedBox(
-          // 讓 Logo 寬度填滿，但不超過最大內容寬度限制
           width: screenWidth > maxContentWidth ? maxContentWidth : screenWidth,
           child: Image.asset(
-            'assets/logo.png', // 請檢查你的圖片路徑是否正確
-            height: 90, // 調整到一個合理的 AppBar 高度，80 會太高
+            'assets/logo.png',
+            height: 90,
             fit: BoxFit.contain,
           ),
         ),
-        // === 根據你的要求，調整 Logo 寬度為螢幕最大可用寬度 END ===
         backgroundColor: const Color(0xFFE8F5E9),
         centerTitle: true,
         automaticallyImplyLeading: false,
@@ -134,12 +85,20 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
               children: [
                 _buildTopUI(),
                 Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CameraPreview(_cameraController!),
-                      _buildOverlay(),
-                    ],
+                  child: FutureBuilder<CameraController>(
+                    future: _cameraControllerFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const Center(child: Text("無法初始化相機"));
+                      }
+                      final controller = snapshot.data!;
+                      return _buildOverlayStack(controller);
+                    },
                   ),
                 ),
                 _buildBottomUI(),
@@ -160,7 +119,6 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 會員頭像改成 InkWell + Material
               Column(
                 children: [
                   Material(
@@ -170,7 +128,6 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
                       borderRadius: BorderRadius.circular(50),
                       onTap: () {
                         if (widget.userId != null) {
-                          // 已登入 → 跳會員中心
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -182,7 +139,6 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
                             ),
                           );
                         } else {
-                          // 訪客 → 顯示登入/註冊彈窗
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
@@ -200,7 +156,8 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => const RegisterLoginPage(),
+                                          builder: (_) =>
+                                              const RegisterLoginPage(),
                                         ),
                                       );
                                     },
@@ -236,14 +193,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
                 ],
               ),
               const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStoreDropdown(),
-                  ],
-                ),
-              ),
+              Expanded(child: _buildStoreDropdown()),
             ],
           ),
           const SizedBox(height: 10),
@@ -253,10 +203,8 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
-
   Widget _buildStoreDropdown() {
     final List<String> stores = ['家樂福', '全聯', '愛買'];
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
@@ -297,14 +245,22 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
-  Widget _buildOverlay() {
+  Widget _buildOverlayStack(CameraController controller) {
     return Stack(
-      alignment: Alignment.center,
+      fit: StackFit.expand,
       children: [
+        CameraPreview(controller),
         _buildScanMask(),
         _buildScanLine(),
         _buildHintText(),
         if (_isFlashing) Container(color: Colors.white.withOpacity(0.7)),
+        if (_isUploading)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
       ],
     );
   }
@@ -376,75 +332,45 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
       color: const Color(0xFFE8F5E9),
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Center(
-        child: GestureDetector(
-          onTap: _takePicture,
-          child: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.green, width: 3),
-              color: Colors.green,
-            ),
-            child:
-                const Icon(Icons.camera_alt, color: Colors.white, size: 30),
-          ),
+        child: FutureBuilder<CameraController>(
+          future: _cameraControllerFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox.shrink();
+            return GestureDetector(
+              onTap: () => _takePicture(snapshot.data!),
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.green, width: 3),
+                  color: Colors.green,
+                ),
+                child: const Icon(Icons.camera_alt,
+                    color: Colors.white, size: 30),
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  // 新增一個狀態
-  bool _isUploading = false;
-
-  Widget _buildOverlayStack() {
-    return Stack(
-      children: [
-        CameraPreview(_cameraController!),
-        _buildScanMask(),
-        _buildScanLine(),
-        _buildHintText(),
-        if (_isFlashing)
-          Container(color: Colors.white.withOpacity(0.7)),
-        if (_isUploading)
-          Container(
-            color: Colors.black.withOpacity(0.5),
-            child: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _takePicture() async {
-    if (!_isCameraInitialized || _cameraController!.value.isTakingPicture) return;
-
+  void _takePicture(CameraController controller) async {
     try {
-      // 停止掃描線 & 閃光效果
       _animationController.stop();
       setState(() => _isFlashing = true);
       await Future.delayed(const Duration(milliseconds: 150));
       setState(() => _isFlashing = false);
 
-      // 拍照
-      final image = await _cameraController!.takePicture();
+      final image = await controller.takePicture();
       print('照片已儲存至: ${image.path}');
 
-      if (!mounted) return;
-
-      // 顯示 loading overlay
       setState(() => _isUploading = true);
-
-      // 模擬上傳
       await Future.delayed(const Duration(seconds: 2));
-      print('照片上傳成功！');
-
-      if (!mounted) return;
-
       setState(() => _isUploading = false);
 
-      // 導到 RecognitionLoadingPage
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -459,7 +385,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
       print('拍照或上傳失敗: $e');
       setState(() => _isUploading = false);
     } finally {
-      _animationController.repeat(reverse: true); // 拍完恢復掃描線
+      _animationController.repeat(reverse: true);
     }
   }
 }

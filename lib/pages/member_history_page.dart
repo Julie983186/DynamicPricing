@@ -326,12 +326,11 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(5),
-                    image: (product['ImageUrl'] != null)
-                      ? DecorationImage(
-                          image: AssetImage('assets/milk.jpg'),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                    image: DecorationImage(
+                      // 如果有 ImageUrl 可以改成 NetworkImage(product['ImageUrl'])
+                      image: AssetImage('assets/milk.jpg'), 
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

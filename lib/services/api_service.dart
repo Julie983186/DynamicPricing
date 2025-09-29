@@ -5,12 +5,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
-final String ip = 'http://127.0.0.1:5000'; // 電腦模擬器用
-// final String ip = 'http://192.168.1.154:5000'; // 手機測試用
-
+class ApiConfig {
+  static const String baseUrl = 'http://127.0.0.1:5000'; //http://192.168.1.154:5000
+}
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
-  final url = Uri.parse('$ip/register');
+  final url = Uri.parse('${ApiConfig.baseUrl}/register');
 
   try {
     final response = await http.post(
@@ -40,7 +40,7 @@ Future<bool> registerUser(String name, String phone, String email, String passwo
 /// ------------------ 登入 ------------------
 /// 回傳 id, name, token
 Future<Map<String, dynamic>?> loginUser(String email, String password) async {
-  final url = Uri.parse('$ip/login');
+  final url = Uri.parse('${ApiConfig.baseUrl}/login');
 
   try {
     final response = await http.post(
@@ -70,7 +70,7 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
 /// ------------------ 抓取會員資料 ------------------
 /// 需要帶 token
 Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
-  final url = Uri.parse('$ip/user/$userId');
+  final url = Uri.parse('${ApiConfig.baseUrl}/user/$userId');
 
   try {
     final response = await http.get(
@@ -103,7 +103,7 @@ Future<bool> updateUserData({
   String? phone,
   String? password,
 }) async {
-  final url = Uri.parse('$ip/user/$userId');
+  final url = Uri.parse('${ApiConfig.baseUrl}/user/$userId');
 
   final Map<String, dynamic> body = {};
   if (name != null) body['name'] = name;

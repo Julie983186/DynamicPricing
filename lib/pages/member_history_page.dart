@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
 import 'scanning_picture_page.dart';
+import '../services/api_service.dart';
 
 
 // 定義顏色常量 (使用與其他頁面一致的色系)
@@ -85,11 +86,8 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
 
     try {
-      // 構建 API URL (假設 API 可以接收 date 參數)
-      final baseUrl = "http://127.0.0.1:5000/get_products/${widget.userId}";
-      final url = dateString != null
-          ? Uri.parse('$baseUrl?date=$dateString') // 加上日期參數
-          : Uri.parse(baseUrl);
+      final baseUrl = "${ApiConfig.baseUrl}/get_products/${widget.userId}";
+      final url = dateString != null ? Uri.parse('$baseUrl?date=$dateString') : Uri.parse(baseUrl);
 
       final response = await http.get(
         url,

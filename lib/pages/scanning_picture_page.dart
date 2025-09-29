@@ -68,7 +68,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
           width: screenWidth > maxContentWidth ? maxContentWidth : screenWidth,
           child: Image.asset(
             'assets/logo.png',
-            height: 90,
+            height: 120, // 將 Logo 放大
             fit: BoxFit.contain,
           ),
         ),
@@ -316,8 +316,11 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
   Widget _buildHintText() {
     return const Positioned(
       top: 20,
+      left: 0,
+      right: 0,
       child: Text(
         '請對準產品名稱、價格與有效期限',
+        textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
           fontSize: 16,

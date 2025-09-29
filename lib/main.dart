@@ -50,10 +50,15 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const RegisterLoginPage(), 
 
         // 注意：/member_history 可能也需要修改，因為它的參數也是硬編碼的
-        '/member_history': (context) => MemberHistoryPage(
-              userId: 1, // ⚠️ 請記得在實際應用中從持久儲存中讀取 userId 和 token
-              token: 'token123',
-            ),
+        '/member_history': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return MemberHistoryPage(
+            userId: args['userId'],
+            userName: args['userName'],
+            token: args['token'],
+          );
+        },
+
 
         '/member_profile': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;

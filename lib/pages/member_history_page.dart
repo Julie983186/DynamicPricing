@@ -295,7 +295,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     
     // 價格和有效期限
     final originalPrice = product['ProPrice'] ?? 0;
-    const suggestedPrice = 55; // 假設建議價格為 55
+    const suggestedPrice = 32; // 假設AI定價為 32 元
 
     return Container(
       padding: const EdgeInsets.all(15.0),

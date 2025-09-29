@@ -17,7 +17,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
   final TextEditingController nameController =
       TextEditingController(text: '瑞穗鮮乳・全脂290ml');
   final TextEditingController dateController =
-      TextEditingController(text: '2025-05-25');
+      TextEditingController(text: '2025-10-02');
 
   @override
   void initState() {

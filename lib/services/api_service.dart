@@ -1,9 +1,12 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // kIsWeb
 
-final String ip = 'http://127.0.0.1:5000';
+/// ------------------ 全域 IP 設定 ------------------
+final String ip = 'http://127.0.0.1:5000'; // 電腦模擬器用
+// final String ip = 'http://192.168.1.154:5000'; // 手機測試用
 
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {

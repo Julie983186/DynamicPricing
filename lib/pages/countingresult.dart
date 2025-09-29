@@ -104,38 +104,43 @@ class _CountingResultState extends State<CountingResult> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // 左上角會員 / 訪客 icon
-                        GestureDetector(
-                          onTap: () {
-                            if (_isGuest()) {
-                              Navigator.pushNamed(context, '/login');
-                            } else {
-                              Navigator.pushNamed(
-                                context,
-                                '/member_profile',
-                                arguments: {
-                                  'userId': widget.userId!,
-                                  'userName': widget.userName!,
-                                  'token': widget.token!,
-                                },
-                              );
-                            }
-                          },
-                          child: Column(
-                            children: [
-                              const Icon(Icons.account_circle,
-                                  size: 32, color: Colors.black87),
-                              const SizedBox(height: 4),
-                              Text(
-                                _isGuest()
-                                    ? "訪客"
-                                    : (widget.userName ?? "會員"),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500,
+                        Material(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(50),
+                            onTap: () {
+                              if (_isGuest()) {
+                                Navigator.pushNamed(context, '/login');
+                              } else {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/member_profile',
+                                  arguments: {
+                                    'userId': widget.userId!,
+                                    'userName': widget.userName!,
+                                    'token': widget.token!,
+                                  },
+                                );
+                              }
+                            },
+                            child: Column(
+                              children: [
+                                const Icon(Icons.account_circle,
+                                    size: 32, color: Colors.black87),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _isGuest()
+                                      ? "訪客"
+                                      : (widget.userName ?? "會員"),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
 
@@ -149,25 +154,33 @@ class _CountingResultState extends State<CountingResult> {
                         ),
 
                         // 右上角再次掃描 icon
-                        GestureDetector(
-                          onTap: () {
-                            if (_isGuest()) {
-                              _showGuestDialog();
-                            } else {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ScanningPicturePage(
-                                    userId: widget.userId,
-                                    userName: widget.userName,
-                                    token: widget.token,
+                        Material(
+                          color: Colors.transparent,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(50),
+                            onTap: () {
+                              if (_isGuest()) {
+                                _showGuestDialog();
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ScanningPicturePage(
+                                      userId: widget.userId,
+                                      userName: widget.userName,
+                                      token: widget.token,
+                                    ),
                                   ),
-                                ),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.fullscreen,
-                              size: 30, color: Colors.black87),
+                                );
+                              }
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(4.0),
+                              child: Icon(Icons.fullscreen,
+                                  size: 30, color: Colors.black87),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -204,7 +217,7 @@ class _CountingResultState extends State<CountingResult> {
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          "有效期限：2025-05-25",
+                          "有效期限：2025-10-02",
                           style: TextStyle(
                               fontSize: 16, color: Colors.black87),
                         ),
@@ -263,8 +276,7 @@ class _CountingResultState extends State<CountingResult> {
                       ),
                     ],
                   ),
-                  child:
-                      AdviceProductList(scrollController: scrollController),
+                  child: AdviceProductList(scrollController: scrollController),
                 );
               },
             ),

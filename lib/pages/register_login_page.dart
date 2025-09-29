@@ -4,6 +4,7 @@ import 'scanning_picture_page.dart';
 import 'countingresult.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
+import 'register_login_page.dart';
 
 // 💡 新增: 定義會員頁面的淺綠色背景
 const Color _kLightGreenBg = Color(0xFFE8F5E9); 

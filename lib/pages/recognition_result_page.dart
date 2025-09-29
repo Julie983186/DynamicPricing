@@ -57,7 +57,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             ),
             const SizedBox(height: 10),
             const Text(
-              '有效期限：\n2025-05-25',
+              '有效期限：\n2025-10-02',
               style: TextStyle(fontSize: 18),
               textAlign: TextAlign.center,
             ),

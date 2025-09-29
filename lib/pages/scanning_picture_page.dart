@@ -3,6 +3,9 @@ import 'package:camera/camera.dart';
 import 'dart:io';
 import '../services/route_logger.dart';
 import 'recognition_loading_page.dart';
+import 'member_profile_page.dart'; 
+import 'register_login_page.dart';
+
 
 class ScanningPicturePage extends StatefulWidget {
   final int? userId;
@@ -20,7 +23,8 @@ class ScanningPicturePage extends StatefulWidget {
   _ScanningPicturePageState createState() => _ScanningPicturePageState();
 }
 
-class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerProviderStateMixin {
+class _ScanningPicturePageState extends State<ScanningPicturePage>
+    with TickerProviderStateMixin {
   CameraController? _cameraController;
   late AnimationController _animationController;
   bool _isCameraInitialized = false;
@@ -35,6 +39,15 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
     _initializeCamera();
     _initializeAnimation();
     saveCurrentRoute('/scan');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 👉 回到這頁時，如果相機被清掉就重新初始化
+    if (_cameraController == null) {
+      _initializeCamera();
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -104,7 +117,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
             fontSize: 24,
           ),
         ),
-        backgroundColor: const Color(0xFFE8F5E9),
+        backgroundColor: Color(0xFFE8F5E9),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -143,28 +156,79 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: () {
-                  print('頭像被點擊');
-                },
-                child: Column(
-                  children: [
-                    Container(
-                      width: 35,
-                      height: 35,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF388E3C).withOpacity(0.5),
-                        shape: BoxShape.circle,
+              // 會員頭像改成 InkWell + Material
+              Column(
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(50),
+                      onTap: () {
+                        if (widget.userId != null) {
+                          // 已登入 → 跳會員中心
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MemberProfilePage(
+                                userId: widget.userId!,
+                                userName: widget.userName ?? "會員",
+                                token: widget.token ?? "",
+                              ),
+                            ),
+                          );
+                        } else {
+                          // 訪客 → 顯示登入/註冊彈窗
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text("需要登入"),
+                                content: const Text("請先登入或註冊以使用會員功能"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text("取消"),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => const RegisterLoginPage()),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                    child: const Text("登入/註冊"),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 35,
+                        height: 35,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF388E3C).withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.account_circle,
+                            color: Colors.white, size: 25),
                       ),
-                      // 可替換 icon 或改用自訂圖片
-                      child: const Icon(Icons.account_circle, color: Colors.white, size: 25),
                     ),
-                    Text(
-                      widget.userId != null ? widget.userName ?? "會員" : "訪客",
-                      style: const TextStyle(color: Color(0xFF388E3C), fontSize: 12),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.userId != null ? widget.userName ?? "會員" : "訪客",
+                    style: const TextStyle(
+                        color: Color(0xFF388E3C), fontSize: 12),
+                  ),
+                ],
               ),
               const SizedBox(width: 15),
               Expanded(
@@ -183,6 +247,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
       ),
     );
   }
+
 
   Widget _buildStoreDropdown() {
     final List<String> stores = ['家樂福', '全聯', '愛買'];
@@ -234,8 +299,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
         _buildScanMask(),
         _buildScanLine(),
         _buildHintText(),
-        if (_isFlashing)
-          Container(color: Colors.white.withOpacity(0.7)), // 閃光層
+        if (_isFlashing) Container(color: Colors.white.withOpacity(0.7)),
       ],
     );
   }
@@ -317,10 +381,34 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
               border: Border.all(color: Colors.green, width: 3),
               color: Colors.green,
             ),
-            child: const Icon(Icons.camera_alt, color: Colors.white, size: 30),
+            child:
+                const Icon(Icons.camera_alt, color: Colors.white, size: 30),
           ),
         ),
       ),
+    );
+  }
+
+  // 新增一個狀態
+  bool _isUploading = false;
+
+  Widget _buildOverlayStack() {
+    return Stack(
+      children: [
+        CameraPreview(_cameraController!),
+        _buildScanMask(),
+        _buildScanLine(),
+        _buildHintText(),
+        if (_isFlashing)
+          Container(color: Colors.white.withOpacity(0.7)),
+        if (_isUploading)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
+      ],
     );
   }
 
@@ -328,30 +416,30 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
     if (!_isCameraInitialized || _cameraController!.value.isTakingPicture) return;
 
     try {
-      _animationController.stop(); // 暫停掃描線
-      setState(() => _isFlashing = true); // 閃光
+      // 停止掃描線 & 閃光效果
+      _animationController.stop();
+      setState(() => _isFlashing = true);
       await Future.delayed(const Duration(milliseconds: 150));
       setState(() => _isFlashing = false);
 
+      // 拍照
       final image = await _cameraController!.takePicture();
-      if (!mounted) return;
       print('照片已儲存至: ${image.path}');
 
-      await _uploadImage(image.path);
-    } catch (e) {
-      print('拍照失敗: $e');
-    } finally {
-      _animationController.repeat(reverse: true); // 恢復掃描線
-    }
-  }
+      if (!mounted) return;
 
-  Future<void> _uploadImage(String imagePath) async {
-    print('正在將照片上傳至假想後端API...');
-    try {
+      // 顯示 loading overlay
+      setState(() => _isUploading = true);
+
+      // 模擬上傳
       await Future.delayed(const Duration(seconds: 2));
       print('照片上傳成功！');
 
       if (!mounted) return;
+
+      setState(() => _isUploading = false);
+
+      // 導到 RecognitionLoadingPage
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -363,7 +451,10 @@ class _ScanningPicturePageState extends State<ScanningPicturePage> with TickerPr
         ),
       );
     } catch (e) {
-      print('照片上傳失敗: $e');
+      print('拍照或上傳失敗: $e');
+      setState(() => _isUploading = false);
+    } finally {
+      _animationController.repeat(reverse: true); // 拍完恢復掃描線
     }
   }
 }

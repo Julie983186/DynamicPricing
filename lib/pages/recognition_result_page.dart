@@ -1,10 +1,9 @@
-// lib/pages/recognition_result_page.dart
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
 import 'counting.dart';
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
-
+import 'recognition_loading_page.dart'; // 注意：原本你的 LoadingPage 應該是 RecognitionLoadingPage
 
 class RecognitionResultPage extends StatefulWidget {
   final int? userId;
@@ -23,52 +22,50 @@ class RecognitionResultPage extends StatefulWidget {
 }
 
 class _RecognitionResultPageState extends State<RecognitionResultPage> {
-  // 設置要求的背景色
-  static const Color _lightGreenBackground = Color(0xFFE8F5E9); 
+  static const Color _lightGreenBackground = Color(0xFFE8F5E9);
 
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/resultCheck'); // 記錄當前頁面
+    saveCurrentRoute('/resultCheck');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 將背景色改為 0xFFE8F5E9
-      backgroundColor: _lightGreenBackground, 
+      backgroundColor: _lightGreenBackground,
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
           children: [
-            // 替換 'LOGO' 文字為圖片
+            // 放大 Logo
             Image.asset(
-              'assets/logo.png', // 您的 Logo 圖片路徑
-              height: 40, // 設定圖片高度
+              'assets/logo.png',
+              height: 100, // Logo 放大
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 20),
-            
+
             Image.asset(
               'assets/milk.jpg',
               height: 200,
             ),
             const SizedBox(height: 20),
-            
+
             const Text(
               '商品名稱：瑞穗鮮乳・全脂290ml',
               style: TextStyle(fontSize: 18),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
-            
+
             const Text(
               '有效期限：\n2025-10-02',
               style: TextStyle(fontSize: 18),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            
+
             const Text(
               '產品名稱及有效期限是否正確？',
               style: TextStyle(
@@ -79,14 +76,13 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             ),
             const SizedBox(height: 20),
 
-            // 「正確」按鈕 (維持導航到 LoadingPage)
+            // 「正確」按鈕
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    // 保持原始程式碼的導航目標：LoadingPage
-                    builder: (_) => LoadingPage( 
+                    builder: (_) => RecognitionLoadingPage(
                       userId: widget.userId,
                       userName: widget.userName,
                       token: widget.token,
@@ -102,7 +98,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             ),
             const SizedBox(height: 10),
 
-            // 「手動修改」按鈕 (維持不變)
+            // 「手動修改」按鈕
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -124,7 +120,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             ),
             const SizedBox(height: 10),
 
-            // 「重新掃描」按鈕 (維持不變)
+            // 「重新掃描」按鈕
             ElevatedButton(
               onPressed: () {
                 Navigator.push(

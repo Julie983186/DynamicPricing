@@ -252,7 +252,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
         CameraPreview(controller),
         _buildScanMask(),
         _buildScanLine(),
-        _buildHintText(),
+        _buildHintText(), // 文字置中
         if (_isFlashing) Container(color: Colors.white.withOpacity(0.7)),
         if (_isUploading)
           Container(
@@ -313,11 +313,15 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
+  // 修改 _buildHintText() 文字置中
   Widget _buildHintText() {
     return const Positioned(
       top: 20,
+      left: 0,
+      right: 0,
       child: Text(
         '請對準產品名稱、價格與有效期限',
+        textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
           fontSize: 16,

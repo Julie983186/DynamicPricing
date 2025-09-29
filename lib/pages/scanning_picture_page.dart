@@ -68,7 +68,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
           width: screenWidth > maxContentWidth ? maxContentWidth : screenWidth,
           child: Image.asset(
             'assets/logo.png',
-            height: 90,
+            height: 120, // 將 Logo 放大
             fit: BoxFit.contain,
           ),
         ),
@@ -252,7 +252,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
         CameraPreview(controller),
         _buildScanMask(),
         _buildScanLine(),
-        _buildHintText(), // 文字置中
+        _buildHintText(),
         if (_isFlashing) Container(color: Colors.white.withOpacity(0.7)),
         if (_isUploading)
           Container(
@@ -313,7 +313,6 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
-  // 修改 _buildHintText() 文字置中
   Widget _buildHintText() {
     return const Positioned(
       top: 20,

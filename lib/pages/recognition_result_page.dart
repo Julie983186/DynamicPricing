@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
-import 'counting.dart';
+import 'counting.dart'; // ✅ 導向目標
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
 import 'recognition_loading_page.dart'; 
@@ -34,7 +34,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _lightGreenBackground,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
           children: [
@@ -79,10 +79,12 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             // 「正確」按鈕
             ElevatedButton(
               onPressed: () {
+                // 🎯 修正導航目標：導向 CountingPage
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => LoadingPage(
+                    // 假設 counting.dart 中定義的頁面為 CountingPage
+                    builder: (_) => LoadingPage( 
                       userId: widget.userId,
                       userName: widget.userName,
                       token: widget.token,
@@ -94,11 +96,11 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 backgroundColor: Colors.orange,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('正確'),
+              child: const Text('正確', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 10),
 
-            // 「手動修改」按鈕
+            // 「手動修改」按鈕 (導向 RecognitionEditPage)
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -116,14 +118,14 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 backgroundColor: Colors.green,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('手動修改'),
+              child: const Text('手動修改', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 10),
 
-            // 「重新掃描」按鈕
+            // 「重新掃描」按鈕 (導向 ScanningPicturePage)
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ScanningPicturePage(
@@ -138,7 +140,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 backgroundColor: Colors.lightBlue,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('重新掃描'),
+              child: const Text('重新掃描', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

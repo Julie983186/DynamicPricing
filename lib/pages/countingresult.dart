@@ -25,6 +25,7 @@ class _CountingResultState extends State<CountingResult> {
   // 標準背景色設定
   static const Color _standardBackground = Color(0xFFE8F5E9);
   
+  // 保持原有的訪客對話框狀態旗標
   bool _hasShownGuestDialog = false;
 
   @override
@@ -43,6 +44,7 @@ class _CountingResultState extends State<CountingResult> {
     debugPrint('掃描紀錄已捨棄（範例）');
   }
 
+  // 原始的訪客對話框：用於「再次掃描」按鈕
   void _showGuestDialog() {
     if (_hasShownGuestDialog) return; // 防止重複彈出
     _hasShownGuestDialog = true;
@@ -101,6 +103,97 @@ class _CountingResultState extends State<CountingResult> {
     });
   }
 
+  // 新增的「需要登入」對話框：用於點擊頭像
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: const Color(0xFFF7F5F9), // 淺紫色背景
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+          
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(height: 10),
+              Text(
+                "需要登入",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                "請先登入或註冊以使用會員功能",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                ),
+              ),
+              SizedBox(height: 10),
+            ],
+          ),
+          
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: <Widget>[
+            // 取消按鈕 (左側)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 關閉對話框
+              },
+              child: const Text(
+                "取消",
+                style: TextStyle(
+                  color: Color(0xFF8A2BE2), // 紫色文字
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            
+            // 登入/註冊按鈕 (右側，橘色背景)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700, // 橘色背景
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30), // 圓角
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                elevation: 3,
+              ),
+              onPressed: () {
+                // 1. 關閉對話框
+                Navigator.of(context).pop(); 
+                
+                // 2. 導向登入/註冊頁面
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
+                );
+              },
+              child: const Text(
+                "登入/註冊",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     double originalPrice = 35;
@@ -132,8 +225,10 @@ class _CountingResultState extends State<CountingResult> {
                             borderRadius: BorderRadius.circular(50),
                             onTap: () {
                               if (_isGuest()) {
-                                Navigator.pushNamed(context, '/login');
+                                // 🎯 修正：訪客點擊頭像時彈出「需要登入」對話框
+                                _showLoginRequiredDialog();
                               } else {
+                                // 會員點擊時導向會員檔案頁面 (保持不變)
                                 Navigator.pushNamed(
                                   context,
                                   '/member_profile',
@@ -168,7 +263,7 @@ class _CountingResultState extends State<CountingResult> {
                         // LOGO 替換為圖片
                         Image.asset(
                           'assets/logo.png', // 您的 Logo 圖片路徑
-                          height: 40, // 調整圖片高度，與 LOGO 文字高度相當
+                          height: 90, // 調整圖片高度，與 LOGO 文字高度相當
                           fit: BoxFit.contain,
                         ),
 
@@ -179,9 +274,11 @@ class _CountingResultState extends State<CountingResult> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
                             onTap: () {
+                              // 🎯 修正：訪客點擊時呼叫原始的 _showGuestDialog()
                               if (_isGuest()) {
-                                _showGuestDialog();
+                                _showGuestDialog(); // 彈出「要不要保留這筆掃描紀錄？」
                               } else {
+                                // 會員直接導向掃描頁面 (保持不變)
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

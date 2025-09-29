@@ -3,7 +3,7 @@ import '../services/route_logger.dart';
 import 'counting.dart';
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
-import 'recognition_loading_page.dart'; // 注意：原本你的 LoadingPage 應該是 RecognitionLoadingPage
+import 'recognition_loading_page.dart'; 
 
 class RecognitionResultPage extends StatefulWidget {
   final int? userId;
@@ -82,7 +82,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => RecognitionLoadingPage(
+                    builder: (_) => LoadingPage(
                       userId: widget.userId,
                       userName: widget.userName,
                       token: widget.token,

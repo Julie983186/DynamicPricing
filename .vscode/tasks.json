@@ -7,7 +7,7 @@
       "command": "python",
       "args": ["app.py"],
       "options": {
-        "cwd": "C:/Users/User/Downloads/my_project/flutter_api" //改成自己的路徑
+        "cwd": "C:/Users/User/Desktop/project/DynamicPricing/flutter_api"
       },
       "problemMatcher": []
     },
@@ -17,7 +17,7 @@
       "command": "flutter",
       "args": ["run"],
       "options": {
-        "cwd": "C:/Users/User/Downloads/my_project" //改成自己的路徑
+        "cwd": "C:/Users/User/Desktop/project/DynamicPricing"
       },
       "problemMatcher": []
     },
@@ -28,3 +28,4 @@
     }
   ]
 }
+

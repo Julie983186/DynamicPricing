@@ -3,7 +3,7 @@ import 'adviceproduct.dart';
 import '../services/route_logger.dart';
 import 'register_login_page.dart';
 import 'member_profile_page.dart';
-import 'scanning_picture_page.dart';
+import 'scanning_picture_page.dart'; // 確保 ScanningPicturePage 已被引入
 
 class CountingResult extends StatefulWidget {
   final int? userId;
@@ -22,6 +22,9 @@ class CountingResult extends StatefulWidget {
 }
 
 class _CountingResultState extends State<CountingResult> {
+  // 標準背景色設定
+  static const Color _standardBackground = Color(0xFFE8F5E9);
+  
   bool _hasShownGuestDialog = false;
 
   @override
@@ -54,8 +57,25 @@ class _CountingResultState extends State<CountingResult> {
           actions: [
             TextButton(
               onPressed: () async {
+                // 1. 關閉對話框
                 Navigator.of(context).pop();
+                
+                // 2. 捨棄掃描紀錄
                 await _discardScanRecord();
+                
+                // 3. 導回掃描頁面 (使用 pushReplacement 避免堆疊過深)
+                if (mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ScanningPicturePage(
+                        userId: widget.userId,
+                        userName: widget.userName,
+                        token: widget.token,
+                      ),
+                    ),
+                  );
+                }
               },
               child: const Text("不保留"),
             ),
@@ -88,7 +108,8 @@ class _CountingResultState extends State<CountingResult> {
     double saved = originalPrice - discountPrice;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFD9EAD3),
+      // 背景顏色修改為 0xFFE8F5E9
+      backgroundColor: _standardBackground, 
       body: SafeArea(
         child: Stack(
           children: [
@@ -144,13 +165,11 @@ class _CountingResultState extends State<CountingResult> {
                           ),
                         ),
 
-                        const Text(
-                          'LOGO',
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF274E13),
-                          ),
+                        // LOGO 替換為圖片
+                        Image.asset(
+                          'assets/logo.png', // 您的 Logo 圖片路徑
+                          height: 40, // 調整圖片高度，與 LOGO 文字高度相當
+                          fit: BoxFit.contain,
                         ),
 
                         // 右上角再次掃描 icon
@@ -187,7 +206,7 @@ class _CountingResultState extends State<CountingResult> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 商品卡片
+                  // 商品卡片 (內容不變)
                   Container(
                     width: 330,
                     padding: const EdgeInsets.all(16),
@@ -257,7 +276,7 @@ class _CountingResultState extends State<CountingResult> {
               ),
             ),
 
-            // 推薦商品
+            // 推薦商品 DraggableScrollableSheet (內容不變)
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               minChildSize: 0.15,
@@ -288,6 +307,7 @@ class _CountingResultState extends State<CountingResult> {
 
   Widget buildPriceBox(String title, String price,
       {bool isDiscount = false}) {
+    // ... buildPriceBox 方法保持不變
     return SizedBox(
       width: 130,
       child: Container(

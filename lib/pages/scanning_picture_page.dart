@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'dart:io';
 import '../services/route_logger.dart';
 import 'recognition_loading_page.dart';
-import 'member_profile_page.dart'; 
+import 'member_profile_page.dart';
 import 'register_login_page.dart';
 
 
@@ -104,20 +104,24 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
       );
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
     const double maxContentWidth = 400;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text(
-          'LOGO',
-          style: TextStyle(
-            color: Color(0xFF388E3C),
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
+        // === 根據你的要求，調整 Logo 寬度為螢幕最大可用寬度 START ===
+        title: SizedBox(
+          // 讓 Logo 寬度填滿，但不超過最大內容寬度限制
+          width: screenWidth > maxContentWidth ? maxContentWidth : screenWidth,
+          child: Image.asset(
+            'assets/logo.png', // 請檢查你的圖片路徑是否正確
+            height: 90, // 調整到一個合理的 AppBar 高度，80 會太高
+            fit: BoxFit.contain,
           ),
         ),
-        backgroundColor: Color(0xFFE8F5E9),
+        // === 根據你的要求，調整 Logo 寬度為螢幕最大可用寬度 END ===
+        backgroundColor: const Color(0xFFE8F5E9),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -196,7 +200,8 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                            builder: (_) => const RegisterLoginPage()),
+                                          builder: (_) => const RegisterLoginPage(),
+                                        ),
                                       );
                                     },
                                     style: ElevatedButton.styleFrom(

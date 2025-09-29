@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
 import 'countingresult.dart';
 
-
-
 class LoadingPage extends StatefulWidget {
   final int? userId;
   final String? userName;
@@ -38,35 +36,33 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFD9EAD3), // 淡綠背景
+      backgroundColor: const Color(0xFFE8F5E9), // 將背景色改為 0xFFE8F5E9
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text(
-                'LOGO',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF274E13), // 深綠
-                ),
+            children: [
+              // 替換 'LOGO' 文字為圖片
+              Image.asset(
+                'assets/logo.png', // 您的 Logo 圖片路徑
+                height: 150, // 調整圖片高度，您可以根據需求修改
+                fit: BoxFit.contain,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               Text(
                 '價格計算中...',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Color(0xFF388E3C), // 調整文字顏色為深綠
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 '請稍待',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.black54,
+                  color: Color(0xFF689F38), // 調整文字顏色為較亮綠
                 ),
               ),
             ],

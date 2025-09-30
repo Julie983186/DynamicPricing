@@ -19,9 +19,9 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
   static const Color _primaryGreen = Colors.green;
 
   final TextEditingController nameController =
-      TextEditingController(text: '瑞穗鮮乳・全脂290ml');
+        TextEditingController(text: '瑞穗鮮乳・全脂290ml');
   final TextEditingController dateController =
-      TextEditingController(text: '2025-10-02');
+        TextEditingController(text: '2025-10-02');
 
   @override
   void initState() {
@@ -70,6 +70,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
             Image.asset(
               'assets/milk.jpg',
               height: 200,
+              fit: BoxFit.contain, // 加上 fit: BoxFit.contain 確保圖片完整顯示
             ),
             const SizedBox(height: 20),
 
@@ -96,7 +97,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => LoadingPage( 
+                    builder: (_) => RecognitionLoadingPage( // 修正為 RecognitionLoadingPage
                       userId: widget.userId,
                       userName: widget.userName,
                       token: widget.token,
@@ -108,7 +109,11 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
                 backgroundColor: Colors.orange,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('送出'),
+             
+              child: const Text(
+                '送出',
+                style: TextStyle(color: Colors.white, fontSize: 16), 
+              ),
             ),
             const SizedBox(height: 10),
           ],

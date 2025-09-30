@@ -115,7 +115,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: const Color.fromARGB(255, 90, 157, 92),
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: const Text('手動修改', style: TextStyle(color: Colors.white)),
@@ -137,7 +137,7 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
+                backgroundColor: const Color.fromARGB(255, 51, 138, 179),
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: const Text('重新掃描', style: TextStyle(color: Colors.white)),

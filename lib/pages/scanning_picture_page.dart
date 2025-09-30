@@ -64,18 +64,24 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: SizedBox(
-          width: screenWidth > maxContentWidth ? maxContentWidth : screenWidth,
-          child: Image.asset(
-            'assets/logo.png',
-            height: 120, // 將 Logo 放大
-            fit: BoxFit.contain,
+        toolbarHeight: 90, // 整體 AppBar 高度
+        title: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5), // 控制上下距離
+            child: Image.asset(
+              'assets/logo.png',
+              height: 90, // 固定 Logo 高度
+              fit: BoxFit.contain,
+            ),
           ),
         ),
         backgroundColor: const Color(0xFFE8F5E9),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
+
+ 
+
       body: Container(
         color: const Color(0xFFE8F5E9),
         child: Center(
@@ -206,7 +212,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
   Widget _buildStoreDropdown() {
     final List<String> stores = ['家樂福', '全聯', '愛買'];
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),

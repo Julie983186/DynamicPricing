@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--相機權限開啟-->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="my_project"
         android:name="${applicationName}"

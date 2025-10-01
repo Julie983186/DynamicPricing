@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   // 設定跳轉邏輯
   void _navigateToNextScreen() async {
     // 延遲 3 秒後自動跳轉
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 4));
 
     if (mounted) {
       // 使用 pushReplacementNamed 跳轉到登入頁面，並清除當前路由
@@ -38,18 +38,17 @@ class _SplashScreenState extends State<SplashScreen> {
     // 如果你沒有使用圖片，則使用純色背景和文字 LOGO
     return Scaffold(
       // 背景色使用與圖片相符的淺黃/淺綠色調
-      backgroundColor: const Color(0xFFF0F5D8), 
+      backgroundColor: const Color(0xFFF5F0D0), 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // 這是使用圖片資產的方法（請確保路徑正確）
             Image.asset(
-              'assets/splash_background.jpg', // 💡 請確認你的啟動畫面圖片路徑！
-              height: 300,
+              'assets/splash_background.jpg',
+              width: MediaQuery.of(context).size.width * 0.8, // 螢幕 80% 寬
               fit: BoxFit.contain,
             ),
-            
             // 如果不想用圖片，只想用文字和顏色
             /*
             const Text(

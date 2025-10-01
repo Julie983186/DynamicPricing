@@ -1,13 +1,16 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // kIsWeb
 
-final String ip = 'http://127.0.0.1:5000';
-
+/// ------------------ 全域 IP 設定 ------------------
+class ApiConfig {
+  static const String baseUrl = 'http://127.0.0.1:5000'; 
+}
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
-  final url = Uri.parse('$ip/register');
+  final url = Uri.parse('${ApiConfig.baseUrl}/register');
 
   try {
     final response = await http.post(
@@ -37,7 +40,7 @@ Future<bool> registerUser(String name, String phone, String email, String passwo
 /// ------------------ 登入 ------------------
 /// 回傳 id, name, token
 Future<Map<String, dynamic>?> loginUser(String email, String password) async {
-  final url = Uri.parse('$ip/login');
+  final url = Uri.parse('${ApiConfig.baseUrl}/login');
 
   try {
     final response = await http.post(
@@ -48,6 +51,7 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      print("login success data = $data");
       return {
         'id': data['user']['id'],
         'name': data['user']['name'],
@@ -66,7 +70,7 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
 /// ------------------ 抓取會員資料 ------------------
 /// 需要帶 token
 Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
-  final url = Uri.parse('$ip/user/$userId');
+  final url = Uri.parse('${ApiConfig.baseUrl}/user/$userId');
 
   try {
     final response = await http.get(
@@ -99,7 +103,7 @@ Future<bool> updateUserData({
   String? phone,
   String? password,
 }) async {
-  final url = Uri.parse('$ip/user/$userId');
+  final url = Uri.parse('${ApiConfig.baseUrl}/user/$userId');
 
   final Map<String, dynamic> body = {};
   if (name != null) body['name'] = name;

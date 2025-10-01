@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
+import 'scanning_picture_page.dart';
+import '../services/api_service.dart';
+
 
 // 定義顏色常量 (使用與其他頁面一致的色系)
 const Color _kPrimaryGreen = Color(0xFF388E3C);
@@ -11,10 +14,11 @@ const Color _kCardBg = Color(0xFFF1F8E9); // 卡片背景色
 const Color _kAccentRed = Color(0xFFD32F2F); // 價格/刪除紅色
 
 class MemberHistoryPage extends StatefulWidget {
-  final int userId;      // 會員 ID, 訪客用 0
-  final String? token;   // JWT token, 訪客為 null
+  final int? userId;
+  final String? userName;
+  final String? token;
 
-  const MemberHistoryPage({Key? key, required this.userId, this.token}) : super(key: key);
+  const MemberHistoryPage({super.key, this.userId, this.userName, this.token});
 
   @override
   State<MemberHistoryPage> createState() => _MemberHistoryPageState();
@@ -82,11 +86,8 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
 
     try {
-      // 構建 API URL (假設 API 可以接收 date 參數)
-      final baseUrl = "http://127.0.0.1:5000/get_products/${widget.userId}";
-      final url = dateString != null
-          ? Uri.parse('$baseUrl?date=$dateString') // 加上日期參數
-          : Uri.parse(baseUrl);
+      final baseUrl = "${ApiConfig.baseUrl}/get_products/${widget.userId}";
+      final url = dateString != null ? Uri.parse('$baseUrl?date=$dateString') : Uri.parse(baseUrl);
 
       final response = await http.get(
         url,
@@ -231,7 +232,16 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           ),
           IconButton(
             icon: const Icon(Icons.fullscreen, color: _kPrimaryGreen), 
-            onPressed: () => Navigator.pushNamed(context, '/scan'), 
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScanningPicturePage(
+                  userId: widget.userId!,
+                  userName: widget.userName!,
+                  token: widget.token!,
+                ),
+              ),
+            ), 
           ),
         ],
       ),
@@ -283,7 +293,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     
     // 價格和有效期限
     final originalPrice = product['ProPrice'] ?? 0;
-    const suggestedPrice = 55; // 假設建議價格為 55
+    const suggestedPrice = 32; // 假設AI定價為 32 元
 
     return Container(
       padding: const EdgeInsets.all(15.0),
@@ -314,12 +324,11 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(5),
-                    image: (product['ImageUrl'] != null)
-                      ? DecorationImage(
-                          image: NetworkImage(product['ImageUrl']),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                    image: DecorationImage(
+                      // 如果有 ImageUrl 可以改成 NetworkImage(product['ImageUrl'])
+                      image: AssetImage('assets/milk.jpg'), 
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -348,8 +357,8 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                 const SizedBox(height: 5),
                 _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
                 _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
-                _buildPriceRow('原價', '\$${originalPrice}', isOriginal: true),
-                _buildPriceRow('建議價格', '\$${suggestedPrice}', isOriginal: false),
+                _buildPriceRow('即期價格', '\$${originalPrice}', isOriginal: true),
+                _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: false),
               ],
             ),
           ),

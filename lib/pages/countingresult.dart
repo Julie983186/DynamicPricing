@@ -103,70 +103,28 @@ class _CountingResultState extends State<CountingResult> {
     });
   }
 
-  // 新增的「需要登入」對話框：用於點擊頭像
+  // 🎯 修改後的「需要登入」對話框：用於點擊頭像 (使用標準 AlertDialog 樣式)
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: const Color(0xFFF7F5F9), // 淺紫色背景
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-          
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 10),
-              Text(
-                "需要登入",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "請先登入或註冊以使用會員功能",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
-              ),
-              SizedBox(height: 10),
-            ],
-          ),
-          
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          title: const Text("需要登入"),
+          content: const Text("請先登入或註冊以使用會員功能"),
           actions: <Widget>[
             // 取消按鈕 (左側)
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // 關閉對話框
               },
-              child: const Text(
-                "取消",
-                style: TextStyle(
-                  color: Color(0xFF8A2BE2), // 紫色文字
-                  fontSize: 16,
-                ),
-              ),
+              child: const Text("取消"),
             ),
             
             // 登入/註冊按鈕 (右側，橘色背景)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade700, // 橘色背景
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30), // 圓角
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                elevation: 3,
+                backgroundColor: Colors.orange, // 橘色背景
               ),
               onPressed: () {
                 // 1. 關閉對話框
@@ -178,14 +136,7 @@ class _CountingResultState extends State<CountingResult> {
                   MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
                 );
               },
-              child: const Text(
-                "登入/註冊",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: const Text("登入/註冊"),
             ),
           ],
         );
@@ -217,7 +168,7 @@ class _CountingResultState extends State<CountingResult> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // 左上角會員 / 訪客 icon
+                        // 左上角會員 / 訪客 icon 【樣式已修改】
                         Material(
                           color: Colors.transparent,
                           shape: const CircleBorder(),
@@ -225,7 +176,7 @@ class _CountingResultState extends State<CountingResult> {
                             borderRadius: BorderRadius.circular(50),
                             onTap: () {
                               if (_isGuest()) {
-                                // 🎯 修正：訪客點擊頭像時彈出「需要登入」對話框
+                                // 🎯 訪客點擊頭像時彈出「需要登入」對話框
                                 _showLoginRequiredDialog();
                               } else {
                                 // 會員點擊時導向會員檔案頁面 (保持不變)
@@ -242,16 +193,27 @@ class _CountingResultState extends State<CountingResult> {
                             },
                             child: Column(
                               children: [
-                                const Icon(Icons.account_circle,
-                                    size: 32, color: Colors.black87),
+                                // 🎯 新的頭像樣式
+                                Container(
+                                  width: 35,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF388E3C).withOpacity(0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.account_circle,
+                                      color: Colors.white, size: 25),
+                                ),
+                                
                                 const SizedBox(height: 4),
                                 Text(
                                   _isGuest()
                                       ? "訪客"
                                       : (widget.userName ?? "會員"),
+                                  // 🎯 新的文字樣式 (綠色文字)
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: Colors.black87,
+                                    color: Color(0xFF388E3C),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),

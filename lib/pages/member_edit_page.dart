@@ -41,6 +41,15 @@ class _MemberEditPageState extends State<MemberEditPage> {
     _passwordController = TextEditingController();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _saveChanges() async {
     setState(() => _isLoading = true);
 
@@ -66,6 +75,21 @@ class _MemberEditPageState extends State<MemberEditPage> {
       );
     }
   }
+  
+  // 🎯 LOGO 區塊 (與 MemberProfilePage 統一)
+  Widget _buildLogo() {
+    return const SizedBox(
+      height: 200, // 保持 Profile Page 的高度
+      width: double.infinity,
+      child: Center(
+        child: Image(
+          image: AssetImage('assets/logo.png'), // 使用 Image.asset
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,16 +111,10 @@ class _MemberEditPageState extends State<MemberEditPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 40.0, bottom: 50.0),
-                            child: Text(
-                              'LOGO',
-                              style: TextStyle(
-                                fontSize: 50,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF388E3C),
-                              ),
-                            ),
+                          // 🎯 替換為圖片 Logo
+                          Padding(
+                            padding: const EdgeInsets.only(top: 40.0, bottom: 50.0), // 保持原有的間距
+                            child: _buildLogo(), // 使用新的 Logo Widget
                           ),
                           _buildFormCard(),
                           const SizedBox(height: 40),

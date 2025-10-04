@@ -79,7 +79,7 @@ class _MemberEditPageState extends State<MemberEditPage> {
   // 🎯 LOGO 區塊 (與 MemberProfilePage 統一)
   Widget _buildLogo() {
     return const SizedBox(
-      height: 200, // 保持 Profile Page 的高度
+      height: 160, // 保持 Profile Page 的高度
       width: double.infinity,
       child: Center(
         child: Image(
@@ -113,11 +113,11 @@ class _MemberEditPageState extends State<MemberEditPage> {
                         children: [
                           // 🎯 替換為圖片 Logo
                           Padding(
-                            padding: const EdgeInsets.only(top: 40.0, bottom: 50.0), // 保持原有的間距
+                            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0), // 保持原有的間距
                             child: _buildLogo(), // 使用新的 Logo Widget
                           ),
                           _buildFormCard(),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 20),
                         ],
                       ),
                     ),
@@ -130,16 +130,16 @@ class _MemberEditPageState extends State<MemberEditPage> {
 
   Widget _buildFormCard() {
     return Container(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F8E9),
-        borderRadius: BorderRadius.circular(20.0),
+        borderRadius: BorderRadius.circular(16.0),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),

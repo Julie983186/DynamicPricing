@@ -80,10 +80,10 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 30),
                           // 1. LOGO
                           _buildLogo(),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 5),
 
                           // 2. 個人資料卡片
                           _buildProfileCard(context),

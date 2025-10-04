@@ -231,7 +231,7 @@ class _CountingResultState extends State<CountingResult> {
 
                         // 右上角再次掃描 icon
                         Material(
-                          color: Colors.transparent,
+                          color: const Color.fromARGB(0, 0, 0, 0),
                           shape: const CircleBorder(),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
@@ -256,7 +256,7 @@ class _CountingResultState extends State<CountingResult> {
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
                               child: Icon(Icons.fullscreen,
-                                  size: 30, color: Colors.black87),
+                                  size: 30, color: Color.fromARGB(221, 54, 131, 63)),
                             ),
                           ),
                         ),
@@ -267,69 +267,90 @@ class _CountingResultState extends State<CountingResult> {
 
                   // 商品卡片 (內容不變)
                   Container(
-                    width: 330,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 220,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.white,
-                          ),
-                          child: Image.asset(
-                            'assets/milk.jpg',
-                            fit: BoxFit.contain,
-                          ),
+                  width: 330,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 220,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
+                        child: Image.asset(
+                          'assets/milk.jpg',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+      // 商品資訊欄位（置中 + 字體一致）
+                  SizedBox(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: const [
+                        Text(
                           "商品名稱：瑞穗鮮乳-全脂290ml",
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w500),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
+                        SizedBox(height: 6),
+                        Text(
                           "有效期限：2025-10-02",
                           style: TextStyle(
-                              fontSize: 16, color: Colors.black87),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            buildPriceBox("即期價格", "\$$originalPrice",
-                                isDiscount: false),
-                            buildPriceBox("AI定價", "\$$discountPrice",
-                                isDiscount: true),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          "‼ 目前價格落於合理範圍 ‼",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black87,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         Text(
-                          "比原價省下 \$$saved 元",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
+                          "原價：\$40",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
+
+      const SizedBox(height: 16),
+
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          buildPriceBox("即期價格", "\$35", isDiscount: false),
+          buildPriceBox("AI定價", "\$32", isDiscount: true),
+        ],
+      ),
+      const SizedBox(height: 12),
+
+      const Text(
+        "‼ 目前價格落於合理範圍 ‼",
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.red,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 6),
+
+      
+    ],
+  ),
+),
+
                   const SizedBox(height: 100),
                 ],
               ),

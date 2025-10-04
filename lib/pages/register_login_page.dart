@@ -4,7 +4,6 @@ import 'scanning_picture_page.dart';
 import 'countingresult.dart';
 import '../services/api_service.dart';
 import '../services/route_logger.dart';
-// import 'register_login_page.dart'; // 移除不必要的自我引用
 
 // 定義會員頁面的淺綠色背景
 const Color _kLightGreenBg = Color(0xFFE8F5E9);
@@ -27,12 +26,12 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
   // Logo 區塊 Helper
   Widget _buildLogo() {
     return SizedBox(
-      height: 150, // 增加 Logo 容器的高度
+      height: 150,
       width: 300,
       child: Image.asset(
-        'assets/logo.png', // 確保這是你的 Logo 圖片正確路徑
+        'assets/logo.png',
         width: 300,
-        fit: BoxFit.contain, // 確保圖片完整顯示不裁切
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -52,9 +51,8 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
                   const SizedBox(height: 30),
                   _buildLogo(),
                   const SizedBox(height: 20),
-
                   Container(
-                    width: 300, // 註冊/登入卡片的寬度
+                    width: 300,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.9),
@@ -78,20 +76,19 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
                           ],
                         ),
                         SizedBox(height: 20),
-                        // TabBarView 設定固定高度 380
                         SizedBox(
-                          height: 380,
+                          height: 450, // 可根據內容調整高度
                           child: TabBarView(
                             children: [
                               RegisterForm(),
-                              LoginForm(), // LoginForm 現在使用 spaceBetween
+                              LoginForm(),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20), // 底部間距
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -143,10 +140,7 @@ class _RegisterFormState extends State<RegisterForm> {
     super.dispose();
   }
 
-  // 註冊邏輯方法
   void submitRegister() async {
-    // 假設 registerUser 是已定義的異步服務方法
-    // 這裡我們假設它已定義在 api_service.dart 中
     try {
       bool isSuccess = await registerUser(
         nameController.text,
@@ -179,46 +173,56 @@ class _RegisterFormState extends State<RegisterForm> {
 
   @override
   Widget build(BuildContext context) {
-    // 註冊表單仍使用預設的 start 對齊，因為內容較多，本身就比較貼近底部
     return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        buildTextField('姓名', controller: nameController),
-        buildTextField('電話', controller: phoneController),
-        buildTextField('Email', controller: emailController),
-        buildTextField('密碼', controller: passwordController, obscureText: true),
-        
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: submitRegister,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-            minimumSize: const Size(double.infinity, 50),
-          ),
-          
-          child: const Text(
-            '註冊',
-            style: TextStyle(color: Colors.white), 
-          ),
+        // 上半部分: 輸入欄位
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            buildTextField('姓名', controller: nameController),
+            buildTextField('電話', controller: phoneController),
+            buildTextField('Email', controller: emailController),
+            buildTextField('密碼', controller: passwordController, obscureText: true),
+          ],
         ),
-        
-        const SizedBox(height: 10),
-        OutlinedButton(
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ScanningPicturePage(),
+        // 下半部分: 按鈕
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: submitRegister,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                minimumSize: const Size(double.infinity, 50),
               ),
-            );
-          },
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            side: const BorderSide(color: Color(0xFF274E13)),
-          ),
-          child: const Text(
-            '以訪客身份使用',
-            style: TextStyle(color: Color(0xFF274E13)),
-          ),
+              child: const Text(
+                '註冊',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ScanningPicturePage(),
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+                side: const BorderSide(color: Color(0xFF274E13)),
+              ),
+              child: const Text(
+                '以訪客身份使用',
+                style: TextStyle(color: Color(0xFF274E13)),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -244,9 +248,7 @@ class _LoginFormState extends State<LoginForm> {
     super.dispose();
   }
 
-  // 登入邏輯方法
   void submitLogin() async {
-    // 假設 loginUser 是已定義的異步服務方法
     final user = await loginUser(
       emailController.text,
       passwordController.text,
@@ -272,40 +274,35 @@ class _LoginFormState extends State<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 關鍵修改點：使用 MainAxisAlignment.spaceBetween
     return Column(
-      // 使用 spaceBetween 讓內容（頂部輸入框組和底部按鈕組）在固定高度內撐開
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, 
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Email 和密碼欄位 (貼齊頂部)
+        // 上半部分: Email / 密碼
         Column(
-          mainAxisSize: MainAxisSize.min, // 確保這組 Column 只佔用最小高度
+          mainAxisSize: MainAxisSize.min,
           children: [
             buildTextField('Email', controller: emailController),
             buildTextField('密碼', controller: passwordController, obscureText: true),
           ],
         ),
-        
-        // 2. 登入和訪客按鈕 (貼齊底部)
+        // 下半部分: 按鈕
         Column(
-          mainAxisSize: MainAxisSize.min, // 確保這組 Column 只佔用最小高度
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 20), // 登入按鈕上方的間距
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: submitLogin,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              
               child: const Text(
                 '登入',
                 style: TextStyle(color: Colors.white),
               ),
             ),
-            
-            const SizedBox(height: 10), // 按鈕間的間距
+            const SizedBox(height: 10),
             OutlinedButton(
               onPressed: () {
                 Navigator.pushReplacement(

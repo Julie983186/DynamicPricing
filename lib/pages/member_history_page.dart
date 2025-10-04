@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
-import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
+import 'package:intl/intl.dart'; 
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 
@@ -27,7 +27,7 @@ class MemberHistoryPage extends StatefulWidget {
 class _MemberHistoryPageState extends State<MemberHistoryPage> {
   List<dynamic> products = [];
   bool isLoading = true;
-  DateTime? _selectedDate; // 💡 新增：用於儲存使用者選擇的日期
+  DateTime? _selectedDate; 
 
   @override
   void initState() {
@@ -118,14 +118,44 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
   }
 
-  // 模擬刪除功能 (保持不變)
+  // 🎯 這裡是用戶要求的修改：加入確認對話框的刪除功能
   void _deleteHistoryItem(int productId, int index) {
-    // 這裡應該呼叫 API 進行實際刪除
-    setState(() {
-      products.removeAt(index);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('商品已移除: ${productId}'), duration: const Duration(seconds: 1)),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('確認刪除'),
+          content: const Text('您確定要刪除這筆歷史紀錄嗎？此操作不可復原。'),
+          actions: <Widget>[
+            // 取消按鈕
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 關閉對話框
+              },
+              child: const Text('取消', style: TextStyle(color: _kPrimaryGreen)),
+            ),
+            // 確認刪除按鈕
+            TextButton(
+              onPressed: () {
+                // 執行刪除邏輯
+                if (mounted) {
+                  setState(() {
+                    products.removeAt(index);
+                  });
+                }
+                
+                // 這裡應該呼叫 API 進行實際刪除 (例如 deleteProduct(productId, widget.token))
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('商品已移除: $productId'), duration: const Duration(seconds: 1)),
+                );
+                Navigator.of(context).pop(); // 關閉對話框
+              },
+              child: const Text('確認刪除', style: TextStyle(color: _kAccentRed)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -319,12 +349,12 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
               children: [
                 // 圖片 placeholder (可替換為 NetworkImage)
                 Container(
-                  width: 60,
-                  height: 80,
+                  width: 80,
+                  height: 100,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(5),
-                    image: DecorationImage(
+                    image: const DecorationImage(
                       // 如果有 ImageUrl 可以改成 NetworkImage(product['ImageUrl'])
                       image: AssetImage('assets/milk.jpg'), 
                       fit: BoxFit.cover,
@@ -357,14 +387,17 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                 const SizedBox(height: 5),
                 _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
                 _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
+                _buildPriceRow('原價', '\$${product['OriginalPrice'] ?? originalPrice}', isOriginal: true), // 💡 新增原價欄位
                 _buildPriceRow('即期價格', '\$${originalPrice}', isOriginal: true),
                 _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: false),
               ],
             ),
           ),
 
+
           // 刪除按鈕
           GestureDetector(
+            // 🎯 點擊時會觸發帶有確認對話框的 _deleteHistoryItem
             onTap: () => _deleteHistoryItem(product['ProId'] ?? -1, index),
             child: const Padding(
               padding: EdgeInsets.only(top: 10.0),

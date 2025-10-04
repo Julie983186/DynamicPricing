@@ -55,7 +55,7 @@ class _CountingResultState extends State<CountingResult> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？"),
+          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？ 若保留需註冊會員 "),
           actions: [
             TextButton(
               onPressed: () async {

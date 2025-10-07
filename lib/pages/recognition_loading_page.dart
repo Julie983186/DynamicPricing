@@ -5,6 +5,7 @@ import '../services/route_logger.dart';
 import 'package:http/http.dart' as http;
 import 'recognition_result_page.dart';
 import 'dart:io';
+import '../services/api_service.dart';
 
 class RecognitionLoadingPage extends StatefulWidget {
   final int? userId;
@@ -37,7 +38,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://192.168.0.129:5000/ocr'),
+        Uri.parse('${ApiConfig.baseUrl}/ocr'),
       );
 
       request.files.add(

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'recognition_result_page.dart';
+import '../services/api_service.dart';
+
 
 class RecognitionEditPage extends StatefulWidget {
   final int? userId;
@@ -61,7 +63,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
     if (productId == null) return;
 
     final res = await http.put(
-      Uri.parse("http://192.168.0.129:5000/product/$productId"),
+      Uri.parse("${ApiConfig.baseUrl}/product/$productId"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "ProName": nameController.text,

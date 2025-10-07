@@ -4,7 +4,7 @@
     {
       "label": "Run Python API",
       "type": "shell",
-      "command": "${workspaceFolder}/venv310/Scripts/python",
+      "command": "python",
       "args": ["app.py"],
       "options": {
         "cwd": "${workspaceFolder}/flutter_api"

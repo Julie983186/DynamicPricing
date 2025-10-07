@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'dart:async'; // 確保引入 dart:async
 import '../services/route_logger.dart';
 import 'countingresult.dart';
+import 'dart:io';
 
 class LoadingPage extends StatefulWidget {
   final int? userId;
   final String? userName;
   final String? token;
+  final String? imagePath;
+  final Map<String, dynamic>? productInfo;
 
-  const LoadingPage({super.key, this.userId, this.userName, this.token});
+  const LoadingPage({super.key, this.userId, this.userName, this.token, this.imagePath, this.productInfo});
 
   @override
   State<LoadingPage> createState() => _LoadingPageState();
@@ -31,6 +34,8 @@ class _LoadingPageState extends State<LoadingPage> {
               userId: widget.userId,
               userName: widget.userName,
               token: widget.token,
+              imagePath: widget.imagePath,
+              productInfo: widget.productInfo,
             ),
           ),
         );

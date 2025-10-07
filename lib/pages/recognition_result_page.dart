@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
 import 'counting.dart'; // ✅ 導向目標
@@ -5,67 +6,83 @@ import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
 import 'recognition_loading_page.dart'; 
 
-class RecognitionResultPage extends StatefulWidget {
+class RecognitionResultPage extends StatelessWidget {
   final int? userId;
   final String? userName;
   final String? token;
+  final String? imagePath;
+  final Map<String, dynamic>? productInfo;
+
+  static const Color _lightGreenBackground = Color(0xFFE8F5E9);
 
   const RecognitionResultPage({
     super.key,
     this.userId,
     this.userName,
     this.token,
+    this.imagePath,
+    this.productInfo,
   });
 
   @override
-  State<RecognitionResultPage> createState() => _RecognitionResultPageState();
-}
-
-class _RecognitionResultPageState extends State<RecognitionResultPage> {
-  static const Color _lightGreenBackground = Color(0xFFE8F5E9);
-
-  @override
-  void initState() {
-    super.initState();
-    saveCurrentRoute('/resultCheck');
-  }
-
-  @override
   Widget build(BuildContext context) {
+    saveCurrentRoute('/resultCheck');
+
+    final name = productInfo?["ProName"] ?? "未知商品";
+    final date = productInfo?["ExpireDate"] ?? "未知日期";
+    final price = productInfo?["Price"] ?? "未知價格";
+    final proprice = productInfo?["ProPrice"] ?? "未知優惠";
+    final market = productInfo?["Market"] ?? "未知賣場";
+
     return Scaffold(
       backgroundColor: _lightGreenBackground,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 放大 Logo
+            // Logo
             Image.asset(
               'assets/logo.png',
-              height: 100, // Logo 放大
+              height: 100,
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 20),
 
-            Image.asset(
-              'assets/milk.jpg',
-              height: 200,
-            ),
+            // 拍攝的圖片 (如果有)
+            if (imagePath != null)
+              Image.file(File(imagePath!), height: 200, fit: BoxFit.contain)
+            else
+              Image.asset('assets/milk.jpg', height: 200, fit: BoxFit.contain),
             const SizedBox(height: 20),
 
-            const Text(
-              '商品名稱：瑞穗鮮乳・全脂290ml',
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
+            // 商品資訊
+            Text("商品名稱：$name",
+                style: const TextStyle(fontSize: 18),
+                textAlign: TextAlign.center),
             const SizedBox(height: 10),
 
-            const Text(
-              '有效期限：\n2025-10-02',
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
+            Text("有效期限：$date",
+                style: const TextStyle(fontSize: 18),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+
+            Text("原價：$price",
+                style: const TextStyle(fontSize: 18),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+
+            Text("即期價格：$proprice",
+                style: const TextStyle(fontSize: 18, color: Colors.red),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+
+            Text("賣場：$market",
+                style: const TextStyle(fontSize: 18, color: Colors.blueGrey),
+                textAlign: TextAlign.center),
             const SizedBox(height: 20),
 
+            // 驗證文字
             const Text(
               '產品名稱及有效期限是否正確？',
               style: TextStyle(
@@ -73,21 +90,22 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 color: Colors.red,
                 fontWeight: FontWeight.w600,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
 
             // 「正確」按鈕
             ElevatedButton(
               onPressed: () {
-                // 🎯 修正導航目標：導向 CountingPage
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    // 假設 counting.dart 中定義的頁面為 CountingPage
-                    builder: (_) => LoadingPage( 
-                      userId: widget.userId,
-                      userName: widget.userName,
-                      token: widget.token,
+                    builder: (_) => LoadingPage( // or CountingPage
+                      userId: userId,
+                      userName: userName,
+                      token: token,
+                      imagePath: imagePath,
+                      productInfo: productInfo,
                     ),
                   ),
                 );
@@ -100,16 +118,18 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
             ),
             const SizedBox(height: 10),
 
-            // 「手動修改」按鈕 (導向 RecognitionEditPage)
+            // 「手動修改」按鈕
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => RecognitionEditPage(
-                      userId: widget.userId,
-                      userName: widget.userName,
-                      token: widget.token,
+                      userId: userId,
+                      userName: userName,
+                      token: token,
+                      imagePath: imagePath,
+                      productInfo: productInfo,
                     ),
                   ),
                 );
@@ -118,20 +138,21 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 backgroundColor: const Color.fromARGB(255, 90, 157, 92),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('手動修改', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('手動修改', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 10),
 
-            // 「重新掃描」按鈕 (導向 ScanningPicturePage)
+            // 「重新掃描」按鈕
             ElevatedButton(
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ScanningPicturePage(
-                      userId: widget.userId,
-                      userName: widget.userName,
-                      token: widget.token,
+                      userId: userId,
+                      userName: userName,
+                      token: token,
                     ),
                   ),
                 );
@@ -140,7 +161,8 @@ class _RecognitionResultPageState extends State<RecognitionResultPage> {
                 backgroundColor: const Color.fromARGB(255, 51, 138, 179),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('重新掃描', style: TextStyle(color: Colors.white)),
+              child: const Text('重新掃描',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

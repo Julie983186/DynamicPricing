@@ -1,40 +1,79 @@
-// lib/pages/recognition_loading_page.dart
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
 import '../services/route_logger.dart';
+import 'package:http/http.dart' as http;
 import 'recognition_result_page.dart';
+import 'dart:io';
 
 class RecognitionLoadingPage extends StatefulWidget {
   final int? userId;
   final String? userName;
   final String? token;
+  final String? imagePath;
+  final String? market; // 👈 新增傳入的賣場名稱
 
-  const RecognitionLoadingPage({super.key, this.userId, this.userName, this.token});
+  const RecognitionLoadingPage({
+    super.key,
+    this.userId,
+    this.userName,
+    this.token,
+    this.imagePath,
+    this.market,
+  });
 
   @override
   State<RecognitionLoadingPage> createState() => _RecognitionLoadingPageState();
 }
 
-
 class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/loading'); // 記錄當前頁面
-    // 3秒後結果確認
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.push(
+    _processImage();
+  }
+
+  Future<void> _processImage() async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://192.168.0.129:5000/ocr'),
+      );
+
+      request.files.add(
+        await http.MultipartFile.fromPath('image', widget.imagePath!),
+      );
+      request.fields['market'] = widget.market ?? '未知賣場';
+
+      // 👉 帶入 JWT Token
+      if (widget.token != null) {
+        request.headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+
+      // 再去抓最新資料
+      var response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      final productInfo = json.decode(respStr);
+      print(productInfo);
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => RecognitionResultPage(
             userId: widget.userId,
             userName: widget.userName,
             token: widget.token,
+            imagePath: widget.imagePath,
+            productInfo: productInfo,
           ),
         ),
       );
-    });
+    } catch (e) {
+      print("❌ OCR failed: $e");
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -43,28 +82,10 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // LOGO
-            Image.asset(
-              'assets/logo.png',
-              height: 140,
-            ),
-            const SizedBox(height: 40),
-
-            // text
-            const Text(
-              '辨識進行中...',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              '請稍待',
-              style: TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 30),
-
-            // loading indicator
-            const CircularProgressIndicator(color: Colors.green),
+          children: const [
+            CircularProgressIndicator(color: Colors.green),
+            SizedBox(height: 20),
+            Text("辨識中，請稍候..."),
           ],
         ),
       ),

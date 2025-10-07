@@ -36,13 +36,16 @@ BAKERY_KEYWORDS = ["吐司", "麵包", "蛋糕", "可頌", "甜甜圈", "佛卡�
 # -------- 工具函數 --------
 def extract_product_info(texts):
     info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
-    full_text = "\n".join(texts)
+    max_length = 0  # 用來記錄目前抓到的最長名稱
+    full_text = "\n".join(texts)  # <- 一定要定義這個
 
-    # 商品名稱
+
     for line in texts:
         if any(k in line for k in MEAT_KEYWORDS + SEAFOOD_KEYWORDS + VEG_KEYWORDS + BAKERY_KEYWORDS):
-            info["ProName"] = line
-            break
+            # 如果該行比目前紀錄的長，就更新
+            if len(line) > max_length:
+                info["ProName"] = line
+                max_length = len(line)
 
     # 有效日期
     date_match = re.search(r"(\d{4}\.\d{1,2}\.\d{1,2})", full_text)
@@ -60,10 +63,18 @@ def extract_product_info(texts):
 
     # 折扣價: 所有 $，取最低
     discount_candidates = []
+
     for line in texts:
-        matches = re.findall(r"\$\s*(\d+)", line)
-        for m in matches:
+        # 抓 $ 開頭的數字
+        matches_dollar = re.findall(r"\$\s*(\d+)", line)
+        for m in matches_dollar:
             discount_candidates.append(int(m))
+        
+        # 抓結尾為 元 的數字
+        matches_yuan = re.findall(r"(\d+)\s*元", line)
+        for m in matches_yuan:
+            discount_candidates.append(int(m))
+
     if discount_candidates:
         info["ProPrice"] = min(discount_candidates)
 

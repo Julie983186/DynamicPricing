@@ -4,7 +4,6 @@ import '../services/route_logger.dart';
 import 'scanning_picture_page.dart';
 import 'member_history_page.dart';
 
-
 // 定義顏色常量
 const Color _kPrimaryGreen = Color(0xFF388E3C);
 const Color _kLightGreenBg = Color(0xFFE8F5E9);
@@ -39,7 +38,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
     super.initState();
     _name = widget.userName; // 預設名稱
     _loadUserData();
-    saveCurrentRoute('/member_profile'); 
+    saveCurrentRoute('/member_profile');
   }
 
   // --- 載入會員資料 ---
@@ -80,11 +79,13 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const SizedBox(height: 10),
-                          // 1. LOGO
-                          _buildLogo(),
-                          const SizedBox(height: 20),
-
+                          const SizedBox(height: 10), // 保留頂部間距
+                          // 1. LOGO (使用 Padding 控制與下方卡片的間距)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 60.0, bottom: 20.0), // 統一使用 20.0 的底部間距
+                            child: _buildLogo(),
+                          ),
+                          
                           // 2. 個人資料卡片
                           _buildProfileCard(context),
 
@@ -99,10 +100,10 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
     );
   }
 
-  // LOGO 區塊
+  // LOGO 區塊 (高度調整為 160，與 MemberEditPage 保持一致)
   Widget _buildLogo() {
     return SizedBox(
-      height: 200,
+      height: 160, // 調整為 160
       width: double.infinity,
       child: Center(
         child: Image.asset(
@@ -168,7 +169,6 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
           const SizedBox(height: 30),
 
           // 修改按鈕 → 進入 /member_edit
-          // 修改按鈕 → 進入 /member_edit
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -221,15 +221,15 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
           '歷史記錄',
           Icons.description,
           () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MemberHistoryPage(
-                      userId: widget.userId,
-                      userName: widget.userName,
-                      token: widget.token,
-                    ),
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MemberHistoryPage(
+                    userId: widget.userId,
+                    userName: widget.userName,
+                    token: widget.token,
                   ),
                 ),
+              ),
         ),
         _buildIconTextButton(
           context,
@@ -266,6 +266,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
           Text(label, style: const TextStyle(fontSize: 16, color: _kPrimaryGreen)),
         ],
       ),
+      // 保持原始的邏輯和樣式
     );
   }
 

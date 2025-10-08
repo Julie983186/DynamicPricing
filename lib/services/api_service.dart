@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.0.129:5000'; 
+  static const String baseUrl = 'http://172.20.10.3:5000'; 
 }
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
@@ -180,5 +180,43 @@ class RegisterScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// ------------------ 抓取會員歷史商品紀錄 ------------------
+/// 需要帶 token，可選擇帶日期（dateString）
+Future<List<dynamic>> fetchHistoryProducts(
+  int userId,
+  String? token, {
+  String? dateString,
+}) async {
+  try {
+    final url = Uri.parse(
+      '${ApiConfig.baseUrl}/get_products/$userId' +
+          (dateString != null ? '?date=$dateString' : ''),
+    );
+
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is List) {
+        return data;
+      } else {
+        print('回傳資料格式錯誤: $data');
+        return [];
+      }
+    } else {
+      print('取得歷史紀錄失敗: ${response.statusCode} ${response.body}');
+      return [];
+    }
+  } catch (e) {
+    print('連線錯誤: $e');
+    return [];
   }
 }

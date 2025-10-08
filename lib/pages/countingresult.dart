@@ -55,7 +55,7 @@ class _CountingResultState extends State<CountingResult> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？"),
+          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
           actions: [
             TextButton(
               onPressed: () async {
@@ -205,7 +205,7 @@ class _CountingResultState extends State<CountingResult> {
                         ),
                         // 右上角再次掃描 icon
                         Material(
-                          color: Colors.transparent,
+                          color: const Color.fromARGB(0, 0, 0, 0),
                           shape: const CircleBorder(),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
@@ -228,7 +228,7 @@ class _CountingResultState extends State<CountingResult> {
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
                               child: Icon(Icons.fullscreen,
-                                  size: 30, color: Colors.black87),
+                                  size: 30, color: Color.fromARGB(221, 38, 92, 31)),
                             ),
                           ),
                         ),

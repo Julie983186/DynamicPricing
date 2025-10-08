@@ -41,6 +41,15 @@ class _MemberEditPageState extends State<MemberEditPage> {
     _passwordController = TextEditingController();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _saveChanges() async {
     setState(() => _isLoading = true);
 
@@ -67,6 +76,21 @@ class _MemberEditPageState extends State<MemberEditPage> {
     }
   }
 
+  // 🎯 LOGO 區塊 (從原始碼複製過來)
+  Widget _buildLogo() {
+    return const SizedBox(
+      height: 160, // 保持 Profile Page 的高度
+      width: double.infinity,
+      child: Center(
+        child: Image(
+          image: AssetImage('assets/logo.png'), // 使用 Image.asset
+          width: double.infinity,
+          fit: BoxFit.fitWidth,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,19 +111,13 @@ class _MemberEditPageState extends State<MemberEditPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 40.0, bottom: 50.0),
-                            child: Text(
-                              'LOGO',
-                              style: TextStyle(
-                                fontSize: 50,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF388E3C),
-                              ),
-                            ),
+                          // 🎯 替換為圖片 Logo
+                          Padding(
+                            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0), // 調整間距以適應 Logo 高度
+                            child: _buildLogo(), // 使用新的 Logo Widget
                           ),
                           _buildFormCard(),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 20), // 調整底部間距
                         ],
                       ),
                     ),

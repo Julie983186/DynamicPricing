@@ -28,21 +28,55 @@ mysql = MySQL(app)
 ocr = PaddleOCR()
 
 # 關鍵字分類
-MEAT_KEYWORDS = ["雞", "豬", "牛", "羊", "肉"]
-SEAFOOD_KEYWORDS = ["魚", "蝦", "蟹", "螺", "白管", "貝", "海鮮", "海帶", "魷"]
-VEG_KEYWORDS = ["菜", "瓜", "果", "蔬", "菇", "蘋果", "香蕉", "橘子", "葡萄", "山藥", "豆", "洋蔥", "芭樂", "蔥", "櫻桃", "秋葵", "梨", "柑", "柚"]
-BAKERY_KEYWORDS = ["吐司", "麵包", "蛋糕", "可頌", "甜甜圈", "佛卡夏", "貝果", "鬆餅", "德國結", "蛋塔", "法式"]
+MEAT_KEYWORDS = ["豬", "牛", "雞", "羊", "腿", "排", "肉", "火鍋片", "絞肉"]
+SEAFOOD_KEYWORDS = ["魚", "蝦", "魷", "鮭", "花枝", "章魚", "鯛", "干貝", "蛤", "牡蠣", "螺", "白管", "海帶"]
+VEG_KEYWORDS = ["菜", "瓜", "果", "蔬", "蘋果", "香蕉", "橘子", "葡萄", "山藥", "豆芽", "筍", "菇", "椒", "番茄", "洋蔥", "芭樂", "蔥", "櫻桃", "秋葵", "梨", "柑", "柚"]
+BAKERY_KEYWORDS = ["吐司", "麵包", "蛋糕", "可頌", "甜甜圈", "佛卡夏", "貝果", "鬆餅", "德國結", "蛋塔", "法式", "餅"]
+BEAN_KEYWORDS = ["豆腐", "豆干", "豆皮", "百頁", "豆包", "素"]
+READY_TO_EAT_KEYWORDS = ["三明治", "便當", "沙拉", "餃子皮", "火鍋料", "水果盤"]
+
 
 # -------- 工具函數 --------
+def extract_prices(texts):
+    """抽取原價與即期價，支援 $ 與 元 的標籤"""
+    discount_candidates = []  # $ → 折扣
+    normal_candidates = []    # 元 → 原價/折扣
+
+    for line in texts:
+        # $ 開頭
+        matches_dollar = re.findall(r"\$\s*(\d+)", line)
+        for m in matches_dollar:
+            discount_candidates.append(int(m))
+
+        # "元" 結尾
+        matches_yuan = re.findall(r"(\d+)\s*元", line)
+        for m in matches_yuan:
+            normal_candidates.append(int(m))
+
+    price, pro_price = None, None
+    if discount_candidates:  
+        # 有 $ → 視為折扣價 (最低)，元價取最大當原價
+        pro_price = min(discount_candidates)
+        if normal_candidates:
+            price = max(normal_candidates)
+    else:
+        # 沒有 $ → 用 元 最大 = 原價，最小 = 折扣
+        if normal_candidates:
+            price = max(normal_candidates)
+            pro_price = min(normal_candidates)
+
+    return price, pro_price
+
+
 def extract_product_info(texts):
     info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
     max_length = 0  # 用來記錄目前抓到的最長名稱
-    full_text = "\n".join(texts)  # <- 一定要定義這個
+    full_text = "\n".join(texts)
 
-
+    # 商品名稱：抓到有關鍵字的最長行
     for line in texts:
-        if any(k in line for k in MEAT_KEYWORDS + SEAFOOD_KEYWORDS + VEG_KEYWORDS + BAKERY_KEYWORDS):
-            # 如果該行比目前紀錄的長，就更新
+        if any(k in line for k in MEAT_KEYWORDS + SEAFOOD_KEYWORDS + VEG_KEYWORDS +
+                                BAKERY_KEYWORDS + BEAN_KEYWORDS + READY_TO_EAT_KEYWORDS):
             if len(line) > max_length:
                 info["ProName"] = line
                 max_length = len(line)
@@ -52,33 +86,13 @@ def extract_product_info(texts):
     if date_match:
         info["ExpireDate"] = date_match.group(1)
 
-    # 原價: 只抓有 "元" 的數字
-    price_candidates = []
-    for line in texts:
-        matches = re.findall(r"(\d+)\s*元", line)
-        for m in matches:
-            price_candidates.append(int(m))
-    if price_candidates:
-        info["Price"] = price_candidates[-1]
-
-    # 折扣價: 所有 $，取最低
-    discount_candidates = []
-
-    for line in texts:
-        # 抓 $ 開頭的數字
-        matches_dollar = re.findall(r"\$\s*(\d+)", line)
-        for m in matches_dollar:
-            discount_candidates.append(int(m))
-        
-        # 抓結尾為 元 的數字
-        matches_yuan = re.findall(r"(\d+)\s*元", line)
-        for m in matches_yuan:
-            discount_candidates.append(int(m))
-
-    if discount_candidates:
-        info["ProPrice"] = min(discount_candidates)
+    # 原價 / 即期價
+    price, pro_price = extract_prices(texts)
+    info["Price"] = price
+    info["ProPrice"] = pro_price
 
     return info
+
 
 def detect_product_type(name: str) -> str:
     if not name:
@@ -90,8 +104,13 @@ def detect_product_type(name: str) -> str:
     if any(k in name for k in VEG_KEYWORDS):
         return "蔬果"
     if any(k in name for k in BAKERY_KEYWORDS):
-        return "烘焙"
-    return "未知"
+        return "麵包甜點"
+    if any(k in name for k in BEAN_KEYWORDS):
+        return "豆製品"
+    if any(k in name for k in READY_TO_EAT_KEYWORDS):
+        return "熟食"
+    return "其他"
+
 
 def normalize_date(expire_str):
     """轉換日期字串為 YYYY-MM-DD, 並判斷狀態"""

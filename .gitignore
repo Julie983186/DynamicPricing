@@ -64,3 +64,6 @@ venv310/
 
 # For Python virtual environment (if you are using it)
 /.venv/
+
+# uploads pic no need to track
+flutter_api/uploads/

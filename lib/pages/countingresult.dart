@@ -1,20 +1,25 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'adviceproduct.dart';
 import '../services/route_logger.dart';
 import 'register_login_page.dart';
 import 'member_profile_page.dart';
-import 'scanning_picture_page.dart'; // 確保 ScanningPicturePage 已被引入
+import 'scanning_picture_page.dart';
 
 class CountingResult extends StatefulWidget {
   final int? userId;
   final String? userName;
   final String? token;
+  final String? imagePath;
+  final Map<String, dynamic>? productInfo;
 
   const CountingResult({
     super.key,
     this.userId,
     this.userName,
     this.token,
+    this.imagePath,
+    this.productInfo,
   });
 
   @override
@@ -22,10 +27,7 @@ class CountingResult extends StatefulWidget {
 }
 
 class _CountingResultState extends State<CountingResult> {
-  // 標準背景色設定
   static const Color _standardBackground = Color(0xFFE8F5E9);
-  
-  // 保持原有的訪客對話框狀態旗標
   bool _hasShownGuestDialog = false;
 
   @override
@@ -44,28 +46,21 @@ class _CountingResultState extends State<CountingResult> {
     debugPrint('掃描紀錄已捨棄（範例）');
   }
 
-  // 原始的訪客對話框：用於「再次掃描」按鈕
   void _showGuestDialog() {
-    if (_hasShownGuestDialog) return; // 防止重複彈出
+    if (_hasShownGuestDialog) return;
     _hasShownGuestDialog = true;
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？"),
+          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
           actions: [
             TextButton(
               onPressed: () async {
-                // 1. 關閉對話框
                 Navigator.of(context).pop();
-                
-                // 2. 捨棄掃描紀錄
                 await _discardScanRecord();
-                
-                // 3. 導回掃描頁面 (使用 pushReplacement 避免堆疊過深)
                 if (mounted) {
                   Navigator.pushReplacement(
                     context,
@@ -98,12 +93,10 @@ class _CountingResultState extends State<CountingResult> {
         );
       },
     ).then((_) {
-      // 關閉後允許下次再觸發
       _hasShownGuestDialog = false;
     });
   }
 
-  // 🎯 修改後的「需要登入」對話框：用於點擊頭像 (使用標準 AlertDialog 樣式)
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
@@ -112,25 +105,15 @@ class _CountingResultState extends State<CountingResult> {
         return AlertDialog(
           title: const Text("需要登入"),
           content: const Text("請先登入或註冊以使用會員功能"),
-          actions: <Widget>[
-            // 取消按鈕 (左側)
+          actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // 關閉對話框
-              },
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text("取消"),
             ),
-            
-            // 登入/註冊按鈕 (右側，橘色背景)
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange, // 橘色背景
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
               onPressed: () {
-                // 1. 關閉對話框
-                Navigator.of(context).pop(); 
-                
-                // 2. 導向登入/註冊頁面
+                Navigator.of(context).pop();
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
@@ -144,16 +127,17 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
-    double originalPrice = 35;
-    double discountPrice = 32;
-    double saved = originalPrice - discountPrice;
+    final info = widget.productInfo ?? {};
+    final name = info["ProName"] ?? "未知商品";
+    final expireDate = info["ExpireDate"] ?? "未知日期";
+    final price = info["Price"]?.toString() ?? "未知";
+    final proPrice = info["ProPrice"]?.toString() ?? "未知";
+    const aiPrice = "300";
 
     return Scaffold(
-      // 背景顏色修改為 0xFFE8F5E9
-      backgroundColor: _standardBackground, 
+      backgroundColor: _standardBackground,
       body: SafeArea(
         child: Stack(
           children: [
@@ -162,13 +146,12 @@ class _CountingResultState extends State<CountingResult> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // 上方 LOGO 與 icons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // 左上角會員 / 訪客 icon 【樣式已修改】
+                        // 左上角會員 / 訪客 icon
                         Material(
                           color: Colors.transparent,
                           shape: const CircleBorder(),
@@ -176,10 +159,8 @@ class _CountingResultState extends State<CountingResult> {
                             borderRadius: BorderRadius.circular(50),
                             onTap: () {
                               if (_isGuest()) {
-                                // 🎯 訪客點擊頭像時彈出「需要登入」對話框
                                 _showLoginRequiredDialog();
                               } else {
-                                // 會員點擊時導向會員檔案頁面 (保持不變)
                                 Navigator.pushNamed(
                                   context,
                                   '/member_profile',
@@ -193,7 +174,6 @@ class _CountingResultState extends State<CountingResult> {
                             },
                             child: Column(
                               children: [
-                                // 🎯 新的頭像樣式
                                 Container(
                                   width: 35,
                                   height: 35,
@@ -204,13 +184,9 @@ class _CountingResultState extends State<CountingResult> {
                                   child: const Icon(Icons.account_circle,
                                       color: Colors.white, size: 25),
                                 ),
-                                
                                 const SizedBox(height: 4),
                                 Text(
-                                  _isGuest()
-                                      ? "訪客"
-                                      : (widget.userName ?? "會員"),
-                                  // 🎯 新的文字樣式 (綠色文字)
+                                  _isGuest() ? "訪客" : (widget.userName ?? "會員"),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF388E3C),
@@ -221,26 +197,22 @@ class _CountingResultState extends State<CountingResult> {
                             ),
                           ),
                         ),
-
-                        // LOGO 替換為圖片
+                        // 中間 LOGO
                         Image.asset(
-                          'assets/logo.png', // 您的 Logo 圖片路徑
-                          height: 90, // 調整圖片高度，與 LOGO 文字高度相當
+                          'assets/logo.png',
+                          height: 90,
                           fit: BoxFit.contain,
                         ),
-
                         // 右上角再次掃描 icon
                         Material(
-                          color: Colors.transparent,
+                          color: const Color.fromARGB(0, 0, 0, 0),
                           shape: const CircleBorder(),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
                             onTap: () {
-                              // 🎯 修正：訪客點擊時呼叫原始的 _showGuestDialog()
                               if (_isGuest()) {
-                                _showGuestDialog(); // 彈出「要不要保留這筆掃描紀錄？」
+                                _showGuestDialog();
                               } else {
-                                // 會員直接導向掃描頁面 (保持不變)
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -256,7 +228,7 @@ class _CountingResultState extends State<CountingResult> {
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
                               child: Icon(Icons.fullscreen,
-                                  size: 30, color: Colors.black87),
+                                  size: 30, color: Color.fromARGB(221, 38, 92, 31)),
                             ),
                           ),
                         ),
@@ -264,8 +236,7 @@ class _CountingResultState extends State<CountingResult> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // 商品卡片 (內容不變)
+                  // 商品卡片
                   Container(
                     width: 330,
                     padding: const EdgeInsets.all(16),
@@ -275,37 +246,42 @@ class _CountingResultState extends State<CountingResult> {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          width: 220,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.white,
-                          ),
-                          child: Image.asset(
-                            'assets/milk.jpg',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
+                        if (widget.imagePath != null)
+                          Container(
+                            width: 220,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white,
+                            ),
+                            child: Image.file(
+                              File(widget.imagePath!),
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        else
+                          const SizedBox(height: 200),
                         const SizedBox(height: 12),
-                        const Text(
-                          "商品名稱：瑞穗鮮乳-全脂290ml",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w500),
-                        ),
+                        Text("商品名稱：$name",
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 6),
-                        const Text(
-                          "有效期限：2025-10-02",
-                          style: TextStyle(
-                              fontSize: 16, color: Colors.black87),
-                        ),
+                        Text("有效期限：$expireDate",
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 6),
+                        Text("原價：\$$price",
+                            style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 6),
+                        Text("即期價格：\$$proPrice",
+                            style: const TextStyle(
+                                fontSize: 16, color: Colors.red)),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            buildPriceBox("即期價格", "\$$originalPrice",
+                            buildPriceBox("即期價格", "\$$proPrice",
                                 isDiscount: false),
-                            buildPriceBox("AI定價", "\$$discountPrice",
+                            buildPriceBox("AI定價", "\$$aiPrice",
                                 isDiscount: true),
                           ],
                         ),
@@ -318,15 +294,6 @@ class _CountingResultState extends State<CountingResult> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "比原價省下 \$$saved 元",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -334,8 +301,7 @@ class _CountingResultState extends State<CountingResult> {
                 ],
               ),
             ),
-
-            // 推薦商品 DraggableScrollableSheet (內容不變)
+            // 推薦商品
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               minChildSize: 0.15,
@@ -367,7 +333,6 @@ class _CountingResultState extends State<CountingResult> {
 
   Widget buildPriceBox(String title, String price,
       {bool isDiscount = false}) {
-    // ... buildPriceBox 方法保持不變
     return SizedBox(
       width: 130,
       child: Container(

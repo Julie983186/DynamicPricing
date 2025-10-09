@@ -43,3 +43,27 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Python virtual environment
+venv310/
+
+# Flutter/Dart build files and caches
+/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.vscode/
+
+# Android/iOS specific build outputs
+/android/.gradle
+/android/local.properties
+/android/build
+/ios/.symlinks
+/ios/Flutter/Generated.xcconfig
+
+# For Python virtual environment (if you are using it)
+/.venv/
+
+# uploads pic no need to track
+flutter_api/uploads/

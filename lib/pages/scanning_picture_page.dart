@@ -4,6 +4,11 @@ import '../services/route_logger.dart';
 import 'recognition_loading_page.dart';
 import 'member_profile_page.dart';
 import 'register_login_page.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
+
 
 class ScanningPicturePage extends StatefulWidget {
   final int? userId;
@@ -15,7 +20,7 @@ class ScanningPicturePage extends StatefulWidget {
     this.userId,
     this.userName,
     this.token,
-  }) : super(key: key);
+  }) : super(key: key); 
 
   @override
   _ScanningPicturePageState createState() => _ScanningPicturePageState();
@@ -41,6 +46,12 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
   }
 
   Future<CameraController> _initCameraController() async {
+    // 要求權限
+    var status = await Permission.camera.request();
+    if (!status.isGranted) {
+      throw Exception("相機權限未允許");
+    }
+
     final cameras = await availableCameras();
     final backCamera = cameras.firstWhere(
       (camera) => camera.lensDirection == CameraLensDirection.back,
@@ -210,7 +221,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
   }
 
   Widget _buildStoreDropdown() {
-    final List<String> stores = ['家樂福', '全聯', '愛買'];
+    final List<String> stores = ['家樂福', '全聯', '愛買', '大全聯'];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
@@ -256,7 +267,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
       fit: StackFit.expand,
       children: [
         CameraPreview(controller),
-        _buildScanMask(),
+        //_buildScanMask(),
         _buildScanLine(),
         _buildHintText(),
         if (_isFlashing) Container(color: Colors.white.withOpacity(0.7)),
@@ -271,6 +282,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
+  /*
   Widget _buildScanMask() {
     return ColorFiltered(
       colorFilter: ColorFilter.mode(
@@ -297,7 +309,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
         ],
       ),
     );
-  }
+  }*/
 
   Widget _buildScanLine() {
     return Align(
@@ -367,32 +379,48 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
 
   void _takePicture(CameraController controller) async {
     try {
+      // 停止動畫效果，並顯示閃光效果
       _animationController.stop();
       setState(() => _isFlashing = true);
       await Future.delayed(const Duration(milliseconds: 150));
       setState(() => _isFlashing = false);
 
+      // 拍照
       final image = await controller.takePicture();
-      print('照片已儲存至: ${image.path}');
+      print('臨時照片路徑: ${image.path}');
 
-      setState(() => _isUploading = true);
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() => _isUploading = false);
+      // -------- 儲存到永久資料夾 --------
+      final appDir = await getApplicationDocumentsDirectory(); // App Documents 路徑
+      final scansDir = Directory('${appDir.path}/scans');
 
+      // 如果資料夾不存在，則建立
+      if (!await scansDir.exists()) {
+        await scansDir.create(recursive: true);
+        print('建立資料夾: ${scansDir.path}');
+      }
+
+      // 產生唯一檔名，避免覆蓋
+      final fileName = 'scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(image.path).copy('${scansDir.path}/$fileName');
+
+      print('照片已永久儲存至: ${savedImage.path}');
+
+      // -------- 導入 RecognitionLoadingPage --------
       if (!mounted) return;
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => RecognitionLoadingPage(
             userId: widget.userId,
             userName: widget.userName,
             token: widget.token,
+            imagePath: savedImage.path, // 使用永久路徑
+            market: _selectedStore,     // 傳入選擇的賣場
           ),
         ),
       );
     } catch (e) {
-      print('拍照或上傳失敗: $e');
-      setState(() => _isUploading = false);
+      print('拍照或儲存失敗: $e');
     } finally {
       _animationController.repeat(reverse: true);
     }

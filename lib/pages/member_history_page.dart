@@ -6,7 +6,6 @@ import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 import 'dart:io';
-import 'dart:async';
 
 
 
@@ -33,24 +32,11 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
   DateTime? _selectedDate;
   String _searchText = ""; // 搜尋文字
 
-  
-  Timer? _priceRefreshTimer; // ✅ 定時刷新 AI 價格
-
   @override
   void initState() {
     super.initState();
     fetchHistory(); 
     saveCurrentRoute('/member_history'); 
-
-    // ✅ 定時刷新 AI 價格，每 30 秒更新一次
-    _priceRefreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      _refreshAiPrices();
-    });
-  }
-  @override
-  void dispose() {
-    _priceRefreshTimer?.cancel(); // ✅ 停掉定時器
-    super.dispose();
   }
 
   // 日期選擇器
@@ -125,7 +111,9 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           });
         }
         // ✅ 立即抓一次 AI 價格
-        _refreshAiPrices();
+        //_refreshAiPrices();
+        // ✅ 初次載入後，立即抓取一次最新 AI 定價
+        await _refreshAiPrices();
 
         print("✅ 抓到歷史紀錄，共 ${products.length} 筆");
         for (var p in products) {
@@ -139,14 +127,14 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
       print("❌ Error fetching history: $e");
     }
   }
-  // 🔹 專門刷新 AI 價格的方法
+  // ✅ 抓取 AI 定價（不再定時，只在 fetchHistory() 後跑一次）
   Future<void> _refreshAiPrices() async {
     for (int i = 0; i < products.length; i++) {
       final product = products[i];
-      double? aiPrice = await fetchAIPrice(product['ProductID']); // 或使用 product['ProName']
+      double? aiPrice = await fetchAIPrice(product['ProductID']); // 用 ID 抓
       if (aiPrice != null && mounted) {
         setState(() {
-          products[i]['AiPrice'] = aiPrice;
+          products[i]['AiPrice'] = aiPrice.toInt(); // ✅ 去除 .0
         });
       }
     }
@@ -344,7 +332,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     final branch = marketParts.length > 1 ? marketParts[1] : '分店';
     
     final originalPrice = product['ProPrice'] ?? 0;
-    final suggestedPrice = product['AiPrice'] ?? 0; 
+    final suggestedPrice = (product['AiPrice'] ?? 0).toInt(); 
 
     return Container(
       padding: const EdgeInsets.all(15.0),

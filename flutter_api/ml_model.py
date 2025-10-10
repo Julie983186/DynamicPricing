@@ -34,11 +34,11 @@ def prepare_features(df):
     # 剩餘保存期限（分鐘）
     if 'ExpireDate' in df.columns:
         now = pd.Timestamp.now()
-        df['剩餘保存期限_分鐘'] = (
+        df['剩餘保存期限_小時'] = (
             pd.to_datetime(df['ExpireDate'], errors='coerce') - now
         ).dt.total_seconds().div(60).clip(lower=0)
     else:
-        df['剩餘保存期限_分鐘'] = 0
+        df['剩餘保存期限_小時'] = 0
 
     # 🟢 自動補上預設特徵（讓模型欄位齊全）
     df['人流量'] = '一般'
@@ -58,8 +58,9 @@ def prepare_features(df):
     for col in feature_cols:
         if col not in df.columns:
             df[col] = 0
-
+            
     return df[feature_cols]
+
 
 def predict_price(df):
     X = prepare_features(df)

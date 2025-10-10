@@ -5,6 +5,7 @@ import '../services/route_logger.dart';
 import 'register_login_page.dart';
 import 'member_profile_page.dart';
 import 'scanning_picture_page.dart';
+import '../services/api_service.dart';
 
 class CountingResult extends StatefulWidget {
   final int? userId;
@@ -29,11 +30,14 @@ class CountingResult extends StatefulWidget {
 class _CountingResultState extends State<CountingResult> {
   static const Color _standardBackground = Color(0xFFE8F5E9);
   bool _hasShownGuestDialog = false;
+  double? AiPrice; // <-- 這裡存從 API 拿到的 AI 價格
 
   @override
   void initState() {
     super.initState();
     saveCurrentRoute('/countingResult');
+
+    _fetchAIPrice(); // 初始化時抓 AI 價格
   }
 
   bool _isGuest() => widget.userId == null || widget.token == null;
@@ -126,7 +130,20 @@ class _CountingResultState extends State<CountingResult> {
       },
     );
   }
+  /// -------------------------- 抓 AI 價格 --------------------------
+Future<void> _fetchAIPrice() async {
+  final productId = widget.productInfo?["ProductID"];
+  if (productId == null) return;
 
+  final value = await fetchAIPrice(productId); // API 回傳 AiPrice
+  if (mounted && value != null) {
+    setState(() {
+      AiPrice = value;
+    });
+  }
+}
+
+  /// -------------------------- Build --------------------------
   @override
   Widget build(BuildContext context) {
     final info = widget.productInfo ?? {};
@@ -134,7 +151,7 @@ class _CountingResultState extends State<CountingResult> {
     final expireDate = info["ExpireDate"] ?? "未知日期";
     final price = info["Price"]?.toString() ?? "未知";
     final proPrice = info["ProPrice"]?.toString() ?? "未知";
-    const aiPrice = "300";
+    //const aiPrice = "300";
 
     return Scaffold(
       backgroundColor: _standardBackground,
@@ -281,7 +298,9 @@ class _CountingResultState extends State<CountingResult> {
                           children: [
                             buildPriceBox("即期價格", "\$$proPrice",
                                 isDiscount: false),
-                            buildPriceBox("AI定價", "\$$aiPrice",
+                            buildPriceBox("AI定價", AiPrice != null
+                                    ? "\$${AiPrice!.toInt()}"
+                                    : "計算中...",
                                 isDiscount: true),
                           ],
                         ),

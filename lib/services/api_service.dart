@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.0.129:5000'; 
+  static const String baseUrl = 'http://192.168.1.153:5000'; 
 }
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
@@ -218,5 +218,35 @@ Future<List<dynamic>> fetchHistoryProducts(
   } catch (e) {
     print('連線錯誤: $e');
     return [];
+  }
+}
+/// ------------------ 抓取單筆商品 AI 價格 ------------------
+Future<double?> fetchAIPrice(int productId) async {
+  try {
+    final url = Uri.parse('${ApiConfig.baseUrl}/predict_price');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+
+      // 改用 ProductID 找對應商品
+      final match = data.firstWhere(
+        (item) => item['ProductID'] == productId,
+        orElse: () => null,
+      );
+
+      if (match != null) {
+        return (match['AiPrice'] as num).toDouble();
+      } else {
+        debugPrint("找不到對應商品的 AI 價格: ProductID=$productId");
+        return null;
+      }
+    } else {
+      debugPrint("抓 AI 價格失敗: ${response.statusCode}");
+      return null;
+    }
+  } catch (e) {
+    debugPrint("抓 AI 價格失敗: $e");
+    return null;
   }
 }

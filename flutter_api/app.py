@@ -9,7 +9,11 @@ from flask_jwt_extended import (
 from paddleocr import PaddleOCR
 import re, traceback
 from datetime import datetime, date
-
+from ml_model import predict_price
+import threading, time
+import os
+import traceback
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -224,6 +228,70 @@ def ocr_api():
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
+# ---------------------- AI 預測價格 API ----------------------
+@app.route("/predict_price", methods=["GET"])
+def predict_price_api():
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT ProductID, ProName, ProPrice, ExpireDate, Status, Market, ProductType, price, ImagePath FROM product")
+        rows = cur.fetchall()
+        cur.close()
+        df = pd.DataFrame(rows, columns=['ProductID', 'ProName', 'ProPrice', 'ExpireDate', 'Status', 'Market', 'ProductType', 'price', 'ImagePath'])
+        #df = get_product_df()
+        df = predict_price(df)  # 預測結果會有 'AI折扣' 與 'aiPrice'
+
+        # 更新資料庫 aiPrice
+        cur = mysql.connection.cursor()
+        for _, row in df.iterrows():
+            cur.execute("UPDATE product SET AiPrice=%s WHERE ProductID=%s", (row['AiPrice'], row['ProductID']))
+        mysql.connection.commit()
+        cur.close()
+
+        # 只回傳 ProName + aiPrice 給前端使用
+        data = df[['ProName', 'AiPrice']].rename(columns={'ProName':'ProName'}).to_dict(orient="records")
+        return jsonify(df.to_dict(orient="records")), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+# ---------------------- 背景自動降價 ----------------------
+def auto_update_prices(interval=300):  #更新頻率
+    with app.app_context():  # ✅ 需要在 Flask app context 內操作資料庫
+        while True:
+            print("\n⏰ 自動降價執行中...")
+
+            # 1️⃣ 從資料庫抓資料 (以 AI 預測價格 ProPrice 為基準)
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT ProductID, AiPrice, ExpireDate FROM product")
+            rows = cur.fetchall()
+            cur.close()
+
+            df = pd.DataFrame(rows, columns=['ProductID','AiPrice','ExpireDate'])
+            
+            # 2️⃣ 轉型數字 & 日期
+            df['AiPrice'] = pd.to_numeric(df['AiPrice'], errors='coerce').fillna(0)
+            df['ExpireDate'] = pd.to_datetime(df['ExpireDate'])
+
+            # 3️⃣ 計算剩餘天數
+            df['DaysLeft'] = (df['ExpireDate'] - pd.Timestamp.now()).dt.days.clip(lower=0)
+
+            # 4️⃣ 計算折扣 & 降價後價格
+            # 範例：剩餘天數越少，折扣越高
+            df['Discount'] = df['DaysLeft'].apply(lambda x: min(0.5, max(0.05, 0.5 - x * 0.02)))
+            df['CurrentPrice'] = (df['AiPrice'] * (1 - df['Discount'])).round(0).astype(int)
+
+            # 5️⃣ 更新資料庫 AiPrice
+            cur = mysql.connection.cursor()
+            for _, row in df.iterrows():
+                cur.execute(
+                    "UPDATE product SET CurrentPrice=%s WHERE ProductID=%s",
+                    (row['CurrentPrice'], row['ProductID'])
+                )
+            mysql.connection.commit()
+            cur.close()
+
+            print(df[['ProductID','AiPrice','CurrentPrice','DaysLeft','Discount']])
+            time.sleep(interval)
 # ---------------------- 更新商品 API ----------------------
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
@@ -485,6 +553,12 @@ def delete_history(history_id):
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 啟動 ----------------------
+# 你的 auto_update_prices 函式定義在這裡
 if __name__ == '__main__':
+
+    # 啟動背景自動降價 Thread
+    thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
+    thread.start()
+
     app.run(host='0.0.0.0', port=5000, debug=True)
 

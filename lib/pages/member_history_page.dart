@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import 'dart:io';
 
 
+
 // 定義顏色常量
 const Color _kPrimaryGreen = Color(0xFF388E3C);
 const Color _kLightGreenBg = Color(0xFFE8F5E9); 
@@ -71,7 +72,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
   }
 
-  // 抓歷史紀錄
+  // 抓歷史紀錄 + AI定價
   Future<void> fetchHistory({DateTime? date, String? search}) async {
     setState(() => isLoading = true);
 
@@ -109,9 +110,14 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
             isLoading = false;
           });
         }
+        // ✅ 立即抓一次 AI 價格
+        //_refreshAiPrices();
+        // ✅ 初次載入後，立即抓取一次最新 AI 定價
+        await _refreshAiPrices();
+
         print("✅ 抓到歷史紀錄，共 ${products.length} 筆");
         for (var p in products) {
-          print("Product: ${p['ProName']}, HistoryID=${p['HistoryID']}");
+          print("Product: ${p['ProName']}, HistoryID=${p['HistoryID']}, AI=${p['AiPrice']}");
         }
       } else {
         throw Exception("載入失敗: ${response.body}");
@@ -119,6 +125,18 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     } catch (e) {
       if (mounted) setState(() => isLoading = false);
       print("❌ Error fetching history: $e");
+    }
+  }
+  // ✅ 抓取 AI 定價（不再定時，只在 fetchHistory() 後跑一次）
+  Future<void> _refreshAiPrices() async {
+    for (int i = 0; i < products.length; i++) {
+      final product = products[i];
+      double? aiPrice = await fetchAIPrice(product['ProductID']); // 用 ID 抓
+      if (aiPrice != null && mounted) {
+        setState(() {
+          products[i]['AiPrice'] = aiPrice.toInt(); // ✅ 去除 .0
+        });
+      }
     }
   }
 
@@ -314,7 +332,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     final branch = marketParts.length > 1 ? marketParts[1] : '分店';
     
     final originalPrice = product['ProPrice'] ?? 0;
-    const suggestedPrice = 32; 
+    final suggestedPrice = (product['AiPrice'] ?? 0).toInt(); 
 
     return Container(
       padding: const EdgeInsets.all(15.0),
@@ -371,7 +389,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
                 _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
                 _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
                 _buildPriceRow('即期價格', '\$${originalPrice}', isOriginal: true),
-                _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: false),
+                _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: true),
               ],
             ),
           ),

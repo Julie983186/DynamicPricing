@@ -13,6 +13,7 @@ class CountingResult extends StatefulWidget {
   final String? token;
   final String? imagePath;
   final Map<String, dynamic>? productInfo;
+  final bool autoUpdateAIPrice; // 新增：是否自動更新 AI 價格
 
   const CountingResult({
     super.key,
@@ -21,6 +22,7 @@ class CountingResult extends StatefulWidget {
     this.token,
     this.imagePath,
     this.productInfo,
+    this.autoUpdateAIPrice = false,
   });
 
   @override
@@ -30,14 +32,27 @@ class CountingResult extends StatefulWidget {
 class _CountingResultState extends State<CountingResult> {
   static const Color _standardBackground = Color(0xFFE8F5E9);
   bool _hasShownGuestDialog = false;
-  double? AiPrice; // <-- 這裡存從 API 拿到的 AI 價格
+  double? AiPrice;
+  int? productId;
+  String? reason;
 
   @override
   void initState() {
     super.initState();
     saveCurrentRoute('/countingResult');
 
-    _fetchAIPrice(); // 初始化時抓 AI 價格
+    // 解析 productInfo
+    final info = widget.productInfo ?? {};
+    productId = info["ProductID"];
+    reason = info["Reason"];
+    AiPrice = (info["AiPrice"] != null)
+        ? double.tryParse(info["AiPrice"].toString())
+        : null;
+
+    // ⚡ 若設定 autoUpdateAIPrice，則再抓最新價格
+    if (widget.autoUpdateAIPrice && productId != null) {
+      _fetchAIPrice();
+    }
   }
 
   bool _isGuest() => widget.userId == null || widget.token == null;
@@ -59,7 +74,8 @@ class _CountingResultState extends State<CountingResult> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
+          content: const Text(
+              "您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
           actions: [
             TextButton(
               onPressed: () async {
@@ -130,18 +146,23 @@ class _CountingResultState extends State<CountingResult> {
       },
     );
   }
-  /// -------------------------- 抓 AI 價格 --------------------------
-Future<void> _fetchAIPrice() async {
-  final productId = widget.productInfo?["ProductID"];
-  if (productId == null) return;
 
-  final value = await fetchAIPrice(productId); // API 回傳 AiPrice
-  if (mounted && value != null) {
-    setState(() {
-      AiPrice = value;
-    });
+  /// -------------------------- 抓 AI 價格 --------------------------
+  Future<void> _fetchAIPrice() async {
+    if (productId == null) return;
+    final value = await fetchAIPrice(productId!);
+    if (mounted && value != null) {
+      setState(() {
+        AiPrice = value;
+      });
+    }
   }
-}
+
+  Color getReasonColor(String? reason) {
+    if (reason == "合理") return Colors.green;
+    if (reason == "不合理") return Colors.red;
+    return Colors.black;
+  }
 
   /// -------------------------- Build --------------------------
   @override
@@ -151,7 +172,6 @@ Future<void> _fetchAIPrice() async {
     final expireDate = info["ExpireDate"] ?? "未知日期";
     final price = info["Price"]?.toString() ?? "未知";
     final proPrice = info["ProPrice"]?.toString() ?? "未知";
-    //const aiPrice = "300";
 
     return Scaffold(
       backgroundColor: _standardBackground,
@@ -195,7 +215,8 @@ Future<void> _fetchAIPrice() async {
                                   width: 35,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF388E3C).withOpacity(0.5),
+                                    color: const Color(0xFF388E3C)
+                                        .withOpacity(0.5),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.account_circle,
@@ -203,7 +224,9 @@ Future<void> _fetchAIPrice() async {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  _isGuest() ? "訪客" : (widget.userName ?? "會員"),
+                                  _isGuest()
+                                      ? "訪客"
+                                      : (widget.userName ?? "會員"),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF388E3C),
@@ -222,7 +245,7 @@ Future<void> _fetchAIPrice() async {
                         ),
                         // 右上角再次掃描 icon
                         Material(
-                          color: const Color.fromARGB(0, 0, 0, 0),
+                          color: Colors.transparent,
                           shape: const CircleBorder(),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
@@ -245,7 +268,8 @@ Future<void> _fetchAIPrice() async {
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
                               child: Icon(Icons.fullscreen,
-                                  size: 30, color: Color.fromARGB(221, 38, 92, 31)),
+                                  size: 30,
+                                  color: Color.fromARGB(221, 38, 92, 31)),
                             ),
                           ),
                         ),
@@ -253,6 +277,7 @@ Future<void> _fetchAIPrice() async {
                     ),
                   ),
                   const SizedBox(height: 20),
+
                   // 商品卡片
                   Container(
                     width: 330,
@@ -298,21 +323,27 @@ Future<void> _fetchAIPrice() async {
                           children: [
                             buildPriceBox("即期價格", "\$$proPrice",
                                 isDiscount: false),
-                            buildPriceBox("AI定價", AiPrice != null
+                            buildPriceBox(
+                                "AI定價",
+                                AiPrice != null
                                     ? "\$${AiPrice!.toInt()}"
                                     : "計算中...",
                                 isDiscount: true),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          "‼ 目前價格落於合理範圍 ‼",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
+
+                        if (reason != null)
+                          Text(
+                            reason == "合理"
+                                ? "✅ 目前價格落於合理範圍 ✅"
+                                : "‼ 目前價格不合理 ‼",
+                            style: TextStyle(
+                              color: getReasonColor(reason),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -320,7 +351,8 @@ Future<void> _fetchAIPrice() async {
                 ],
               ),
             ),
-            // 推薦商品
+
+            // 推薦商品區塊
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               minChildSize: 0.15,
@@ -339,7 +371,11 @@ Future<void> _fetchAIPrice() async {
                       ),
                     ],
                   ),
-                  child: AdviceProductList(scrollController: scrollController),
+                  child: AdviceProductList(
+                    scrollController: scrollController,
+                    productId: productId,
+                    reason: reason,
+                  ),
                 );
               },
             ),
@@ -349,8 +385,7 @@ Future<void> _fetchAIPrice() async {
     );
   }
 
-  Widget buildPriceBox(String title, String price,
-      {bool isDiscount = false}) {
+  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(

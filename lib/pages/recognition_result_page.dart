@@ -5,6 +5,29 @@ import 'counting.dart'; // ✅ 導向目標
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
 import 'recognition_loading_page.dart'; 
+import 'package:http/http.dart' as http;
+import '../services/api_service.dart';
+
+
+Future<void> _deleteProductAndRescan(BuildContext context, int productId) async {
+  try {
+    final url = Uri.parse('${ApiConfig.baseUrl}/product/$productId');
+    final response = await http.delete(url);
+
+    if (response.statusCode == 200) {
+      print('✅ 已刪除商品 $productId');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanningPicturePage()),
+      );
+    } else {
+      print('刪除商品失敗: ${response.body}');
+    }
+  } catch (e) {
+    print('連線錯誤: $e');
+  }
+}
+
 
 class RecognitionResultPage extends StatelessWidget {
   final int? userId;
@@ -145,24 +168,14 @@ class RecognitionResultPage extends StatelessWidget {
 
             // 「重新掃描」按鈕
             ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ScanningPicturePage(
-                      userId: userId,
-                      userName: userName,
-                      token: token,
-                    ),
-                  ),
-                );
+              onPressed: () async {
+                final productId = productInfo?["ProductID"];
+                if (productId != null) {
+                  await _deleteProductAndRescan(context, productId);
+                }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 51, 138, 179),
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('重新掃描',
-                  style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('重新掃描', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

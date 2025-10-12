@@ -233,29 +233,22 @@ def uploaded_file(filename):
 def predict_price_api():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT ProductID, ProName, ProPrice, ExpireDate, Status, Market, ProductType, price, ImagePath FROM product")
+        cur.execute("SELECT ProductID, ProName, ProPrice, ExpireDate FROM product")
         rows = cur.fetchall()
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','ExpireDate'])
+        
+        # 這裡直接呼叫新版 predict_price
+        df = predict_price(df, update_db=True, mysql=mysql)
+        
         cur.close()
-        df = pd.DataFrame(rows, columns=['ProductID', 'ProName', 'ProPrice', 'ExpireDate', 'Status', 'Market', 'ProductType', 'price', 'ImagePath'])
-        #df = get_product_df()
-        df = predict_price(df)  # 預測結果會有 'AI折扣' 與 'aiPrice'
-
-        # 更新資料庫 aiPrice
-        cur = mysql.connection.cursor()
-        for _, row in df.iterrows():
-            cur.execute("UPDATE product SET AiPrice=%s WHERE ProductID=%s", (row['AiPrice'], row['ProductID']))
-        mysql.connection.commit()
-        cur.close()
-
-        # 只回傳 ProName + aiPrice 給前端使用
-        data = df[['ProName', 'AiPrice']].rename(columns={'ProName':'ProName'}).to_dict(orient="records")
         return jsonify(df.to_dict(orient="records")), 200
     except Exception as e:
+        import traceback
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 背景自動降價 ----------------------
-def auto_update_prices(interval=300):  #更新頻率
+'''def auto_update_prices(interval=300):  #更新頻率
     with app.app_context():  # ✅ 需要在 Flask app context 內操作資料庫
         while True:
             print("\n⏰ 自動降價執行中...")
@@ -291,7 +284,7 @@ def auto_update_prices(interval=300):  #更新頻率
             cur.close()
 
             print(df[['ProductID','AiPrice','CurrentPrice','DaysLeft','Discount']])
-            time.sleep(interval)
+            time.sleep(interval)'''
 # ---------------------- 更新商品 API ----------------------
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
@@ -326,31 +319,27 @@ def update_product(product_id):
         print("❌ 更新失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-# ---------------------- 最新商品 ----------------------
-'''
-@app.route("/latest_product", methods=["GET"])
-def latest_product():
+# ---------------------- 刪除商品 API ----------------------
+@app.route('/product/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT productid, ProName, ExpireDate, Price, ProPrice, Market, Status, ProductType, ImagePath FROM product ORDER BY productid DESC LIMIT 1")
+        # 檢查是否存在
+        cur.execute("SELECT ProductID FROM product WHERE ProductID=%s", (product_id,))
         row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "商品不存在"}), 404
+
+        # 刪除該商品
+        cur.execute("DELETE FROM product WHERE ProductID=%s", (product_id,))
+        mysql.connection.commit()
         cur.close()
-        if row:
-            return jsonify({
-                "ProductID": row[0],
-                "ProName": row[1],
-                "ExpireDate": row[2].strftime('%Y-%m-%d') if row[2] else None,
-                "Price": row[3],
-                "ProPrice": row[4],
-                "Market": row[5],
-                "Status": row[6],
-                "ProductType": row[7],
-                "ImagePath": row[8],
-            }), 200
-        return jsonify({"error": "No product found"}), 404
+
+        return jsonify({"message": f"已刪除 ProductID={product_id}"}), 200
     except Exception as e:
+        print("❌ 刪除商品失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-'''
+    
 # ---------------------- 註冊 ----------------------
 @app.route('/register', methods=['POST'])
 def register():
@@ -481,7 +470,7 @@ def get_products(user_id):
 
         query = """
             SELECT p.productid, p.producttype, p.proname, p.proprice,   
-                   h.created_at, p.expiredate, p.status, p.market, p.ImagePath, h.id as history_id
+                   h.created_at, p.expiredate, p.status, p.market, p.ImagePath, h.id, p.AiPrice as history_id
             FROM history h
             JOIN product p ON h.productid = p.productid
             WHERE h.userid = %s
@@ -519,7 +508,8 @@ def get_products(user_id):
                 'Status': p[6],
                 'Market': p[7],
                 'ImagePath': p[8],
-                'HistoryID': p[9],   # 新增：用來刪除 history 紀錄
+                'HistoryID': p[9],
+                'AiPrice': p[10],   
             })
 
         return jsonify({'products': product_list}), 200
@@ -552,13 +542,60 @@ def delete_history(history_id):
         print("❌ 刪除失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
+
+# ---------------------- 推薦商品 ----------------------
+
+@app.route('/recommend_products/<int:product_id>', methods=['GET'])
+def recommend_products(product_id):
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT Market, ProductType, ExpireDate, Reason FROM product WHERE ProductID=%s", (product_id,))
+    base = cur.fetchone()
+    if not base:
+        cur.close()
+        return jsonify({"error": "找不到商品"}), 404
+
+    market, ptype, exp, reason = base
+
+    if reason == "合理":
+        query = """
+            SELECT p1.*
+            FROM product p1
+            JOIN (
+                SELECT ProductType, MIN(ProPrice) AS min_price
+                FROM product
+                WHERE Market=%s AND ExpireDate=%s AND Reason='合理' AND ProductType != %s
+                GROUP BY ProductType
+            ) p2 ON p1.ProductType=p2.ProductType AND p1.ProPrice=p2.min_price
+        """
+        cur.execute(query, (market, exp, ptype))
+    else:
+        query = """
+            SELECT * FROM product
+            WHERE Market=%s AND ExpireDate=%s AND ProductType=%s AND Reason='合理'
+            ORDER BY ProPrice ASC LIMIT 6
+        """
+        cur.execute(query, (market, exp, ptype))
+
+    rows = cur.fetchall()
+    # ✅ 這裡先取得欄位描述
+    desc = cur.description
+    cur.close()
+
+    if not desc:
+        return jsonify([]), 200  # 沒有資料就回空陣列避免 TypeError
+
+    cols = [d[0] for d in desc]
+    result = [dict(zip(cols, row)) for row in rows]
+    return jsonify(result), 200
+
+
 # ---------------------- 啟動 ----------------------
 # 你的 auto_update_prices 函式定義在這裡
 if __name__ == '__main__':
 
     # 啟動背景自動降價 Thread
-    thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
-    thread.start()
+    '''thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
+    thread.start()'''
 
     app.run(host='0.0.0.0', port=5000, debug=True)
 

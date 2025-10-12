@@ -1,104 +1,121 @@
 import 'package:flutter/material.dart';
-import '../services/route_logger.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../services/api_service.dart';
 
 class AdviceProductList extends StatefulWidget {
   final ScrollController scrollController;
-  const AdviceProductList({super.key, required this.scrollController});
+  final int? productId;
+  final String? reason;
+
+  const AdviceProductList({
+    Key? key,
+    required this.scrollController,
+    this.productId,
+    this.reason,
+  }) : super(key: key);
 
   @override
   State<AdviceProductList> createState() => _AdviceProductListState();
 }
 
 class _AdviceProductListState extends State<AdviceProductList> {
+  List<dynamic> _recommendations = [];
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/advice_product'); // 記錄當前頁面
+    _fetchRecommendations();
+  }
+
+  Future<void> _fetchRecommendations() async {
+    if (widget.productId == null) return;
+
+    try {
+      final url = Uri.parse(
+          "${ApiConfig.baseUrl}/recommend_products/${widget.productId}");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _recommendations = data;
+          _isLoading = false;
+        });
+      } else {
+        print("❌ API錯誤: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("❌ 連線錯誤: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return SingleChildScrollView(
       controller: widget.scrollController,
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Center(
-          child: Icon(Icons.drag_handle, color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          "先別離開！根據掃描的商品，您也能考慮以下商品：",
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          children: const [
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 30,
-              expiry: "效期剩1天",
-            ),
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 28,
-              expiry: "效期剩1天",
-            ),
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 25,
-              expiry: "效期剩5小時",
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// ProductCard 保持不變
-class ProductCard extends StatelessWidget {
-  final String imageUrl;
-  final double price;
-  final String expiry;
-
-  const ProductCard({
-    super.key,
-    required this.imageUrl,
-    required this.price,
-    required this.expiry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: const Color(0xFFD9EAD3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: Image.asset(imageUrl, fit: BoxFit.contain),
+            Text(
+              widget.reason == "合理"
+                  ? "推薦同賣場、同到期日的其他合理商品"
+                  : "推薦同賣場、同到期日同類型的合理商品",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D32),
+              ),
             ),
             const SizedBox(height: 8),
-            Text(
-              "\$$price",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              expiry,
-              style: const TextStyle(fontSize: 12, color: Colors.red),
-            ),
+
+            // 若還在載入
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_recommendations.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text("目前無推薦商品", style: TextStyle(fontSize: 16)),
+                ),
+              )
+            else
+              ListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: _recommendations.length,
+                itemBuilder: (context, index) {
+                  final item = _recommendations[index];
+                  final name = item["ProName"] ?? "未命名商品";
+                  final price = item["ProPrice"]?.toString() ?? "-";
+                  final imagePath = item["ImagePath"] ?? "";
+                  final expireDate = item["ExpireDate"] ?? "";
+
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    child: ListTile(
+                      leading: imagePath.isNotEmpty
+                          ? Image.network(
+                              "${ApiConfig.baseUrl}/$imagePath",
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.cover,
+                            )
+                          : const Icon(Icons.image_not_supported,
+                              size: 50, color: Colors.grey),
+                      title: Text(name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 16)),
+                      subtitle: Text("即期價：\$${price}\n效期：$expireDate"),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),

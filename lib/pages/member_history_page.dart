@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
-import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
+import 'package:intl/intl.dart';
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 import 'dart:io';
-
-
 
 // 定義顏色常量
 const Color _kPrimaryGreen = Color(0xFF388E3C);
@@ -72,7 +70,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
   }
 
-  // 抓歷史紀錄 + AI定價
+  // 抓歷史紀錄（不刷新 AI 價格）
   Future<void> fetchHistory({DateTime? date, String? search}) async {
     setState(() => isLoading = true);
 
@@ -110,10 +108,6 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
             isLoading = false;
           });
         }
-        // ✅ 立即抓一次 AI 價格
-        //_refreshAiPrices();
-        // ✅ 初次載入後，立即抓取一次最新 AI 定價
-        await _refreshAiPrices();
 
         print("✅ 抓到歷史紀錄，共 ${products.length} 筆");
         for (var p in products) {
@@ -125,18 +119,6 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     } catch (e) {
       if (mounted) setState(() => isLoading = false);
       print("❌ Error fetching history: $e");
-    }
-  }
-  // ✅ 抓取 AI 定價（不再定時，只在 fetchHistory() 後跑一次）
-  Future<void> _refreshAiPrices() async {
-    for (int i = 0; i < products.length; i++) {
-      final product = products[i];
-      double? aiPrice = await fetchAIPrice(product['ProductID']); // 用 ID 抓
-      if (aiPrice != null && mounted) {
-        setState(() {
-          products[i]['AiPrice'] = aiPrice.toInt(); // ✅ 去除 .0
-        });
-      }
     }
   }
 
@@ -332,7 +314,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     final branch = marketParts.length > 1 ? marketParts[1] : '分店';
     
     final originalPrice = product['ProPrice'] ?? 0;
-    final suggestedPrice = (product['AiPrice'] ?? 0).toInt(); 
+    final suggestedPrice = product['AiPrice'] ?? originalPrice; // DB 的 AiPrice
 
     return Container(
       padding: const EdgeInsets.all(15.0),
@@ -395,12 +377,16 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           ),
 
           // 刪除按鈕
-          GestureDetector(
-            onTap: () => _deleteHistoryItem(product['HistoryID'] ?? -1, index),
-            child: const Padding(
-              padding: EdgeInsets.only(top: 10.0),
-              child: Icon(Icons.delete_outline, color: _kAccentRed, size: 28),
-            ),
+          Column(
+            children: [
+              GestureDetector(
+                onTap: () => _deleteHistoryItem(product['HistoryID'] ?? -1, index),
+                child: const Padding(
+                  padding: EdgeInsets.only(top: 10.0),
+                  child: Icon(Icons.delete_outline, color: _kAccentRed, size: 28),
+                ),
+              ),
+            ],
           ),
         ],
       ),

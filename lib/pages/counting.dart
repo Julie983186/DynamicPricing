@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:async'; // 確保引入 dart:async
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'countingresult.dart';
 import 'dart:io';
+import '../services/api_service.dart';
+
 
 class LoadingPage extends StatefulWidget {
   final int? userId;
@@ -11,7 +15,14 @@ class LoadingPage extends StatefulWidget {
   final String? imagePath;
   final Map<String, dynamic>? productInfo;
 
-  const LoadingPage({super.key, this.userId, this.userName, this.token, this.imagePath, this.productInfo});
+  const LoadingPage({
+    super.key,
+    this.userId,
+    this.userName,
+    this.token,
+    this.imagePath,
+    this.productInfo,
+  });
 
   @override
   State<LoadingPage> createState() => _LoadingPageState();
@@ -21,13 +32,62 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/counting'); // 記錄當前頁面
-    
-    // 🎯 保持原始邏輯：模擬計算，2秒後跳轉到結果頁
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) { 
-        // 使用 pushReplacement 較佳，但為保持原邏輯，這裡使用 push
-        Navigator.push(
+    saveCurrentRoute('/counting');
+
+    // 延遲 0.5 秒後開始呼叫 API 計算
+    Future.delayed(const Duration(milliseconds: 500), _fetchAiPriceAndGo);
+  }
+
+  Future<void> _fetchAiPriceAndGo() async {
+    if (widget.productInfo == null) return;
+
+    try {
+      final productId = widget.productInfo!["ProductID"];
+
+      // 🔹 呼叫後端 /predict_price API
+      final uri = Uri.parse("${ApiConfig.baseUrl}/predict_price?productId=$productId");
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+
+        // 找到對應 ProductID 的結果
+        final productData =
+            data.firstWhere((e) => e["ProductID"] == productId, orElse: () => null);
+
+        if (productData != null) {
+          final updatedProductInfo = {
+            ...?widget.productInfo,
+            "AiPrice": productData["AiPrice"],
+            "Reason": productData["Reason"],
+          };
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CountingResult(
+                  userId: widget.userId,
+                  userName: widget.userName,
+                  token: widget.token,
+                  imagePath: widget.imagePath,
+                  productInfo: updatedProductInfo,
+                ),
+              ),
+            );
+          }
+        } else {
+          throw Exception("找不到對應的 ProductID");
+        }
+      } else {
+        throw Exception("API 回傳錯誤: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("❌ 呼叫 AI 價格 API 發生錯誤: $e");
+
+      // 🔹 出錯也跳轉到結果頁顯示原始資料
+      if (mounted) {
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => CountingResult(
@@ -40,47 +100,40 @@ class _LoadingPageState extends State<LoadingPage> {
           ),
         );
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9), // 背景色保持不變
-      body: Center( // 🎯 移除 SafeArea，直接使用 Center
+      backgroundColor: const Color(0xFFE8F5E9),
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // LOGO
             Image.asset(
-              'assets/logo.png', // 您的 Logo 圖片路徑
-              height: 140, // 🎯 調整圖片高度為 140
+              'assets/logo.png',
+              height: 140,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 40), // 🎯 調整間距為 40
-
-            // 標題文字
+            const SizedBox(height: 40),
             const Text(
-              '價格計算中...', // 保持原始文字
+              '價格計算中...',
               style: TextStyle(
-                fontSize: 20, // 🎯 調整字體大小為 20
-                fontWeight: FontWeight.bold, // 🎯 調整字體粗細為 bold
-                color: Colors.black, // 🎯 調整文字顏色為黑色
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 10),
-            
-            // 副標題文字
             const Text(
               '請稍待',
               style: TextStyle(
-                fontSize: 16, // 🎯 調整字體大小為 16
-                color: Colors.black54, // 🎯 調整文字顏色為 Colors.black54
+                fontSize: 16,
+                color: Colors.black54,
               ),
             ),
-            const SizedBox(height: 30), // 🎯 調整間距為 30
-
-            // 🎯 loading indicator
+            const SizedBox(height: 30),
             const CircularProgressIndicator(color: Colors.green),
           ],
         ),

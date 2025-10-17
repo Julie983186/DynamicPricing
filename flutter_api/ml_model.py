@@ -1,11 +1,12 @@
-# ml_model.py
 import pandas as pd
 import joblib
 import numpy as np
+import pytz
 
+# ----------------- 模型載入 -----------------
 try:
     model = joblib.load("random_forest_model.pkl")
-    feature_cols = model.feature_names_in_
+    feature_cols = model.feature_names_in_  # ⚡ 全域
     print("✅ 已載入真實模型")
 except Exception as e:
     print("⚠️ 無法載入模型，改用 FakeModel:", e)
@@ -20,6 +21,7 @@ except Exception as e:
             print("🔍 FakeModel 輸出:", values)
             return values
     model = FakeModel()
+# ----------------- feature_cols 現在是全域變數 -----------------
 
 def prepare_features(df):
     df = df.copy()
@@ -32,12 +34,50 @@ def prepare_features(df):
 
     df['原價'] = df['price']  # 原價欄位保留 price 的值
 
+    # 取得「本地」當下時間（指定時區為台北）
+    local_tz = 'Asia/Taipei'
+    now = pd.Timestamp.now(tz=local_tz)
     
-    # 剩餘保存期限（分鐘）
-    now = pd.Timestamp.now()
-    df['剩餘保存期限_小時'] = (
-        pd.to_datetime(df.get('ExpireDate'), errors='coerce') - now
-    ).dt.total_seconds().div(3600).clip(lower=0).fillna(0)
+    # 修正後
+    expire = pd.to_datetime(df.get('ExpireDate'), errors='coerce')
+    expire = expire.dt.tz_localize('Asia/Taipei', ambiguous='NaT', nonexistent='NaT')
+    
+    # fallback：若無法解析，嘗試視為本地時間
+    mask_nat = expire.isna()
+    if mask_nat.any():
+        fallback = pd.to_datetime(df.loc[mask_nat, 'ExpireDate'], errors='coerce')
+        fallback = fallback.dt.tz_localize(local_tz, ambiguous='NaT', nonexistent='NaT')
+        expire.loc[mask_nat] = fallback
+
+    # 🕓 若時間為「整日」（例如 2025-10-18 00:00:00），視為當日 23:59:59
+    expire = expire.apply(
+        lambda x: x + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        if (not pd.isna(x) and x.hour == 0 and x.minute == 0 and x.second == 0)
+        else x
+    )
+
+    # 計算剩餘時間（小時）
+    delta_hours = (expire - now).dt.total_seconds().div(3600)
+    df['剩餘保存期限_小時'] = delta_hours.clip(lower=0).fillna(0)
+
+    # 轉成可讀格式
+    def format_remaining_time(expire_ts, now_ts):
+        if pd.isna(expire_ts):
+            return "未知"
+        delta = expire_ts - now_ts
+        if delta.total_seconds() <= 0:
+            return "已過期"
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{days}天 {hours}小時 {minutes}分 {seconds}秒"
+
+    df['剩餘時間_可讀'] = expire.apply(lambda x: format_remaining_time(x, now))
+
+    # ✅ debug 印出確認
+    print("🕒 剩餘時間檢查（台北時區）:")
+    print(df[['ProName', 'ExpireDate', '剩餘保存期限_小時', '剩餘時間_可讀']])
+
     
     # 預設欄位
     df['人流量'] = '一般'
@@ -63,7 +103,8 @@ def prepare_features(df):
         if col not in df.columns:
             df[col] = 0
             
-    return df[feature_cols]
+    return df
+
 
 def predict_price(df, update_db=True, mysql=None):
     print("📌 price 與 ProPrice 對照檢查：")
@@ -75,7 +116,14 @@ def predict_price(df, update_db=True, mysql=None):
     mysql: 若 update_db=True，需傳入 mysql 連線物件
     """
     df = df.copy()
-    X = prepare_features(df)
+
+    # 先用 prepare_features 計算欄位、剩餘時間、one-hot 等
+    df_full = prepare_features(df)
+
+    # ⚡ 只取模型訓練過的欄位
+    X = df_full[feature_cols]
+    #X = prepare_features(df)
+
     print("🧩 輸入給模型的欄位：", list(X.columns))
     print("📊 前幾筆輸入數據：")
     print(X.head())
@@ -90,7 +138,7 @@ def predict_price(df, update_db=True, mysql=None):
 
     df['差異'] = df['AiPrice'] - df['ProPrice']
     print("🛠 AiPrice 與 ProPrice 差異檢查：")
-    print(df[['ProductID','ProName','AiPrice','ProPrice','差異']])
+    print(df[['ProductID','ProName','AiPrice','ProPrice','差異', 'AI折扣']])
 
     # 判斷合理性（允許誤差 ±1）
     df['Reason'] = df.apply(
@@ -99,17 +147,7 @@ def predict_price(df, update_db=True, mysql=None):
         axis=1
     )
 
-    # # 確保 ProPrice 是數字
-    # df['ProPrice'] = pd.to_numeric(df['ProPrice'], errors='coerce').fillna(0)
-    # # 確保 price 是數字
-    # df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0)
-    
-    # # 計算 AiPrice
-    # df['AiPrice'] = (df['price'] * (1 - df['AI折扣'])).round(0).astype(int)
-    # df['AiPrice'] = pd.to_numeric(df['AiPrice'], errors='coerce').fillna(0)
-    # # 判斷合理性
-    # df['Reason'] = df.apply(lambda r: "合理" if r['AiPrice'] >= r['ProPrice'] else "不合理", axis=1)
-    
+
     # 若需要直接更新資料庫
     if update_db and mysql is not None:
         try:
@@ -127,26 +165,60 @@ def predict_price(df, update_db=True, mysql=None):
     return df[['ProductID','ProName','ProPrice','AI折扣','AiPrice','Reason']]
 
 # === ✅ 測試區 ===
-if __name__ == "__main__":
-    test_df = pd.DataFrame([
-        {
-            'ProductID': 1,
-            'ProName': '雞三節翅',
-            'price': 120,
-            'ProPrice': 90,
-            'ExpireDate': '2025-10-18 20:00',
-            'ProductType': '肉類'
-        },
-        {
-            'ProductID': 2,
-            'ProName': '鮭魚',
-            'price': 200,
-            'ProPrice': 180,
-            'ExpireDate': '2025-10-17 23:00',
-            'ProductType': '魚類'
-        }
-    ])
+# if __name__ == "__main__":
+#     test_df = pd.DataFrame([
+#         {
+#             'ProductID': 1,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-19 20:00',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 2,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-18 23:00',
+#             'ProductType': '魚類'
+#         },
+#         {
+#             'ProductID': 3,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-18 00:00',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 4,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-20 00:00:00',
+#             'ProductType': '魚類'
+#         }
+#         ,
+#         {
+#             'ProductID': 5,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-16 00:00:00',
+#             'ProductType': '水果'
+#         }
+#         ,
+#         {
+#             'ProductID': 6,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-19 00:14:00',
+#             'ProductType': '水果'
+#         }
+#     ])
 
-    result = predict_price(test_df, update_db=False)
-    print("模型特徵欄位:", feature_cols)
-    print(result)
+#     result = predict_price(test_df, update_db=False)
+#     print("模型特徵欄位:", feature_cols)
+#     print(result)

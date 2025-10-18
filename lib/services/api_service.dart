@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.0.129:5000'; 
+  static const String baseUrl = 'http://172.20.10.2:5000'; 
 }
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {

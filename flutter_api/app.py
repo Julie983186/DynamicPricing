@@ -9,7 +9,7 @@ from flask_jwt_extended import (
 from paddleocr import PaddleOCR
 import re, traceback
 from datetime import datetime, date
-from ml_model import predict_price
+from ml_model import predict_price, prepare_features, feature_cols
 import threading, time
 import os
 import traceback
@@ -233,9 +233,9 @@ def uploaded_file(filename):
 def predict_price_api():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT ProductID, ProName, ProPrice, ExpireDate FROM product")
+        cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate FROM product")
         rows = cur.fetchall()
-        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','ExpireDate'])
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate'])
         
         # 這裡直接呼叫新版 predict_price
         df = predict_price(df, update_db=True, mysql=mysql)

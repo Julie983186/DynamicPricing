@@ -106,39 +106,27 @@ def prepare_features(df):
     return df
 
 
-def predict_price(df, update_db=True, mysql=None):
-    print("📌 price 與 ProPrice 對照檢查：")
-    print(df[['ProductID','ProName','price','ProPrice']])
-
-    """
-    df: pandas DataFrame, 至少需包含 ProPrice
-    update_db: 是否直接更新 MySQL product 表的 AiPrice 與 Reason
-    mysql: 若 update_db=True，需傳入 mysql 連線物件
-    """
+def predict_price(df, update_db=True, mysql=None, show_features_only=True):
     df = df.copy()
 
-    # 先用 prepare_features 計算欄位、剩餘時間、one-hot 等
+    # 計算特徵欄位（包含 one-hot 類別）
     df_full = prepare_features(df)
 
-    # ⚡ 只取模型訓練過的欄位
-    X = df_full[feature_cols]
-    #X = prepare_features(df)
+    # 🔍 檢查 one-hot
+    category_cols = [c for c in df_full.columns if c.startswith("商品大類_")]
+    print("🔍 商品大類 one-hot 欄位 head：")
+    print(df_full[category_cols].head())
 
-    print("🧩 輸入給模型的欄位：", list(X.columns))
-    print("📊 前幾筆輸入數據：")
-    print(X.head())
+    # 模型輸入
+    X = df_full[feature_cols]
 
     # AI 折扣
     df['AI折扣'] = model.predict(X).round(2)
-    
+
     # 確保數值型別正確
     df['ProPrice'] = pd.to_numeric(df['ProPrice'], errors='coerce').fillna(0).astype(float)
     df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(float)
     df['AiPrice'] = (df['price'] * (1 - df['AI折扣'])).round(0).astype(float)
-
-    df['差異'] = df['AiPrice'] - df['ProPrice']
-    print("🛠 AiPrice 與 ProPrice 差異檢查：")
-    print(df[['ProductID','ProName','AiPrice','ProPrice','差異', 'AI折扣']])
 
     # 判斷合理性（允許誤差 ±1）
     df['Reason'] = df.apply(
@@ -146,6 +134,20 @@ def predict_price(df, update_db=True, mysql=None):
         else "不合理",
         axis=1
     )
+
+    # 將商品大類 one-hot 轉成單一欄位 Category
+    category_cols = [c for c in df_full.columns if c.startswith("商品大類_")]
+    df_full[category_cols] = df_full[category_cols].astype(bool)
+
+    def one_hot_to_category(row):
+        for c in category_cols:
+            if row[c]:
+                return c.replace("商品大類_", "")
+        return "其他"
+
+    # ⚡ 注意 axis=1
+    df['Category'] = df_full.apply(one_hot_to_category, axis=1)
+
 
 
     # 若需要直接更新資料庫
@@ -161,64 +163,75 @@ def predict_price(df, update_db=True, mysql=None):
             cur.close()
         except Exception as e:
             print("❌ 更新 AiPrice 失敗:", e)
-    
-    return df[['ProductID','ProName','ProPrice','AI折扣','AiPrice','Reason']]
 
+    # 回傳只包含主要欄位 + Category
+    df_final = df[['ProductID','ProName','Category','ProPrice','AI折扣','AiPrice','Reason']]
+
+    # 若 show_features_only，打印前 10 筆
+    if show_features_only:
+        print(df_final.head(10))
+
+    return df_final
+
+
+
+
+
+'''
 # === ✅ 測試區 ===
-# if __name__ == "__main__":
-#     test_df = pd.DataFrame([
-#         {
-#             'ProductID': 1,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-19 20:00',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 2,
-#             'ProName': '鮭魚',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-18 23:00',
-#             'ProductType': '魚類'
-#         },
-#         {
-#             'ProductID': 3,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-18 00:00',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 4,
-#             'ProName': '鮭魚',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-20 00:00:00',
-#             'ProductType': '魚類'
-#         }
-#         ,
-#         {
-#             'ProductID': 5,
-#             'ProName': '水果',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-16 00:00:00',
-#             'ProductType': '水果'
-#         }
-#         ,
-#         {
-#             'ProductID': 6,
-#             'ProName': '水果',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-19 00:14:00',
-#             'ProductType': '水果'
-#         }
-#     ])
+if __name__ == "__main__":
+    test_df = pd.DataFrame([
+        {
+            'ProductID': 1,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-20 19:00',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 2,
+            'ProName': '鮭魚',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-19 23:59',
+            'ProductType': '魚類'
+        },
+        {
+            'ProductID': 3,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-19 07:00',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 4,
+            'ProName': '鮭魚',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-20 00:00:00',
+            'ProductType': '魚類'
+        },
+        {
+            'ProductID': 5,
+            'ProName': '水果',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-19 00:00:00',
+            'ProductType': '蔬果類'
+        },
+        {
+            'ProductID': 6,
+            'ProName': '水果',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-20 00:14:00',
+            'ProductType': '蔬果類'
+        }
+    ])
 
-#     result = predict_price(test_df, update_db=False)
-#     print("模型特徵欄位:", feature_cols)
-#     print(result)
+    result = predict_price(test_df, update_db=False)
+    print("模型特徵欄位:", feature_cols)
+    print(result)
+'''

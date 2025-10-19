@@ -1,240 +1,3 @@
-//ML.py
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
-import re
-import joblib
-
-# -----------------------------
-# 1️讀取資料
-# -----------------------------
-df = pd.read_csv("畢業專題田野調查.csv", encoding="utf-8-sig")
-# -----------------------------
-# 🔹將剩餘保存期限(天) + 時間細化成小時
-# -----------------------------
-
-def compute_remaining_hours(row):
-    # 剩餘保存期限（天轉小時）
-    hours = row['剩餘保存期限'] * 24
-
-    # 從時間欄位中取出「結束時間」的時數
-    time_str = str(row['時間'])
-    match = re.search(r'(\d{1,2}):\d{2}-(\d{1,2}):\d{2}', time_str)
-    if match:
-        end_hour = int(match.group(2))
-    else:
-        end_hour = 0  # 防呆
-
-    # 計算今日剩下幾小時（假設每天24:00結束）
-    remaining_today = 24 - end_hour
-
-    # 總剩餘時間（單位：小時）
-    total_hours = hours + remaining_today
-    return total_hours
-
-# 新增欄位：剩餘保存期限_小時
-df['剩餘保存期限_小時'] = df.apply(compute_remaining_hours, axis=1)
-
-print(df[['時間', '剩餘保存期限', '剩餘保存期限_小時']].head())
-# -----------------------------
-# 2️規則型折扣
-# -----------------------------
-def calc_rule_discount(row):
-    hours = row['剩餘保存期限_小時']  # ✅ 改用小時計算
-
-    if row['商品大類'] == '肉類':
-        if hours <= 6: return 0.6
-        elif hours <= 12: return 0.45
-        elif hours <= 24: return 0.3
-        elif hours <= 48: return 0.15
-        else: return 0
-
-    elif row['商品大類'] == '魚類':
-        if hours <= 6: return 0.5
-        elif hours <= 12: return 0.35
-        elif hours <= 24: return 0.25
-        elif hours <= 48: return 0.1
-        else: return 0
-
-    elif row['商品大類'] == '蔬果類':
-        if hours <= 6: return 0.45
-        elif hours <= 12: return 0.3
-        elif hours <= 24: return 0.2
-        elif hours <= 48: return 0.1
-        else: return 0
-
-    elif row['商品大類'] == '麵包甜點類':
-        if hours <= 6: return 0.4
-        elif hours <= 12: return 0.25
-        elif hours <= 24: return 0.15
-        elif hours <= 48: return 0.05
-        else: return 0
-
-    elif row['商品大類'] == '豆製品類':
-        if hours <= 6: return 0.35
-        elif hours <= 12: return 0.25
-        elif hours <= 24: return 0.15
-        elif hours <= 48: return 0.05
-        else: return 0
-
-    elif row['商品大類'] == '熟食/其他':
-        if hours <= 6: return 0.3
-        elif hours <= 12: return 0.2
-        elif hours <= 24: return 0.1
-        elif hours <= 48: return 0.05
-        else: return 0
-
-    elif row['商品大類'] == '其他':
-        if hours <= 6: return 0.25
-        elif hours <= 12: return 0.15
-        elif hours <= 24: return 0.1
-        elif hours <= 48: return 0.05
-        else: return 0
-
-    else:
-        return 0
-
-
-
-df['折扣規則'] = df.apply(calc_rule_discount, axis=1)
-df['售價規則'] = df['原價'] * (1 - df['折扣規則'])
-
-# -----------------------------
-# 3️準備機器學習特徵
-# -----------------------------
-# 將商品大類轉為 One-Hot
-# 對所有類別欄位做 One-Hot
-df = pd.get_dummies(df, columns=['商品大類', '停車狀況', '人流量', '天氣'])
-cols = [c for c in df.columns if '_' in c]
-df[cols] = df[cols].fillna(0).astype(int)
-
-# 特徵欄位
-feature_cols = ['剩餘保存期限_小時','原價','當下溫度','貨架上庫存量'] \
-               + [c for c in df.columns if c.startswith('商品大類_')] \
-               + [c for c in df.columns if c.startswith('停車狀況_')] \
-               + [c for c in df.columns if c.startswith('人流量_')] \
-               + [c for c in df.columns if c.startswith('天氣_')]
-
-X = df[feature_cols]
-y = df['折扣規則']  # 監督學習目標：學規則折扣
-
-# -----------------------------
-# 4️拆分訓練/測試集
-# -----------------------------
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# -----------------------------
-# 5️訓練 Random Forest
-# -----------------------------
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
-
-# 預測
-y_pred = model.predict(X_test)
-print("MSE:", mean_squared_error(y_test, y_pred))
-
-# -----------------------------
-# 6️用模型預測折扣
-# -----------------------------
-df['折扣預測'] = model.predict(X[feature_cols])
-df['售價預測'] = df['原價'] * (1 - df['折扣預測'])
-df['折扣預測'] = df['折扣預測'].round(2)
-df['售價預測'] = df['售價預測'].round(0)
-# -----------------------------
-# 7️查看結果
-# -----------------------------
-print(df[['商品品項','剩餘保存期限_小時','折扣規則','售價規則','折扣預測','售價預測']])
-
-# -----------------------------
-# 8️存檔
-# -----------------------------
-#df.to_csv("dynamic_pricing_result.csv", index=False)
-output_path = "dynamic_pricing_result.csv"
-df.to_csv(output_path, index=False, encoding="utf-8-sig")
-print("已存檔：dynamic_pricing_result.csv")
-
-# 儲存模型
-model_path = "random_forest_model.pkl"
-joblib.dump(model, model_path)
-print("模型已儲存：", model_path)
-----------------------------------------------------------------
-//ml_model.py
-import pandas as pd
-import joblib
-import numpy as np
-
-try:
-    model = joblib.load("random_forest_model.pkl")
-    feature_cols = model.feature_names_in_
-except:
-    feature_cols = ['剩餘保存期限_分鐘','原價',
-                    '人流量_少', '人流量_一般', '人流量_多',
-                    '天氣_晴天', '天氣_陰天', '天氣_雨天',
-                    '停車狀況_少', '停車狀況_一般', '停車狀況_多',
-                    '商品大類_肉類','商品大類_魚類','商品大類_蔬果類','商品大類_其他']
-    class FakeModel:
-        def predict(self, X):
-            return np.random.rand(len(X)) * 0.5
-    model = FakeModel()
-
-def prepare_features(df):
-    df = df.copy()
-    #商品名稱
-    if 'ProName' not in df.columns:
-        df['ProName'] = '未知商品'
-
-    # 原價
-    if '原價' not in df.columns:
-        if 'price' in df.columns:
-            df['原價'] = df['price']
-        elif 'ProPrice' in df.columns:
-            df['原價'] = df['ProPrice']
-        else:
-            df['原價'] = 0
-
-    # 剩餘保存期限（分鐘）
-    if 'ExpireDate' in df.columns:
-        now = pd.Timestamp.now()
-        df['剩餘保存期限_小時'] = (
-            pd.to_datetime(df['ExpireDate'], errors='coerce') - now
-        ).dt.total_seconds().div(60).clip(lower=0)
-    else:
-        df['剩餘保存期限_小時'] = 0
-
-    # 🟢 自動補上預設特徵（讓模型欄位齊全）
-    df['人流量'] = '一般'
-    df['天氣'] = '晴天'
-    df['停車狀況'] = '一般'
-
-    # 商品大類 → ProductType
-    if '商品大類' not in df.columns and 'ProductType' in df.columns:
-        df['商品大類'] = df['ProductType']
-    elif '商品大類' not in df.columns:
-        df['商品大類'] = '其他'
-
-    # one-hot encode
-    df = pd.get_dummies(df, columns=['人流量', '天氣', '停車狀況', '商品大類'])
-
-    # 補上模型要求但不存在的欄位
-    for col in feature_cols:
-        if col not in df.columns:
-            df[col] = 0
-            
-    return df[feature_cols]
-
-
-def predict_price(df):
-    X = prepare_features(df)
-    y_pred = model.predict(X)
-    df['AI折扣'] = y_pred.round(2)
-    # 🟢 確保價格是數字
-    df['ProPrice'] = pd.to_numeric(df['ProPrice'], errors='coerce').fillna(0)
-    df['AiPrice'] = (df['ProPrice'] * (1 - df['AI折扣'])).round(0).astype(int)
-    # 回傳結果時
-    result = df[['ProName','AI折扣','AiPrice']].to_dict(orient='records')
-    return df
-----------------------------------------------------------------
 //app.py
 # app.py
 from flask import Flask, request, jsonify
@@ -247,7 +10,7 @@ from flask_jwt_extended import (
 from paddleocr import PaddleOCR
 import re, traceback
 from datetime import datetime, date
-from ml_model import predict_price
+from ml_model import predict_price, prepare_features, feature_cols
 import threading, time
 import os
 import traceback
@@ -471,29 +234,22 @@ def uploaded_file(filename):
 def predict_price_api():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT ProductID, ProName, ProPrice, ExpireDate, Status, Market, ProductType, price, ImagePath FROM product")
+        cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate FROM product")
         rows = cur.fetchall()
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate'])
+        
+        # 這裡直接呼叫新版 predict_price
+        df = predict_price(df, update_db=True, mysql=mysql)
+        
         cur.close()
-        df = pd.DataFrame(rows, columns=['ProductID', 'ProName', 'ProPrice', 'ExpireDate', 'Status', 'Market', 'ProductType', 'price', 'ImagePath'])
-        #df = get_product_df()
-        df = predict_price(df)  # 預測結果會有 'AI折扣' 與 'aiPrice'
-
-        # 更新資料庫 aiPrice
-        cur = mysql.connection.cursor()
-        for _, row in df.iterrows():
-            cur.execute("UPDATE product SET AiPrice=%s WHERE ProductID=%s", (row['AiPrice'], row['ProductID']))
-        mysql.connection.commit()
-        cur.close()
-
-        # 只回傳 ProName + aiPrice 給前端使用
-        data = df[['ProName', 'AiPrice']].rename(columns={'ProName':'ProName'}).to_dict(orient="records")
         return jsonify(df.to_dict(orient="records")), 200
     except Exception as e:
+        import traceback
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 背景自動降價 ----------------------
-def auto_update_prices(interval=300):  #更新頻率
+'''def auto_update_prices(interval=300):  #更新頻率
     with app.app_context():  # ✅ 需要在 Flask app context 內操作資料庫
         while True:
             print("\n⏰ 自動降價執行中...")
@@ -529,7 +285,7 @@ def auto_update_prices(interval=300):  #更新頻率
             cur.close()
 
             print(df[['ProductID','AiPrice','CurrentPrice','DaysLeft','Discount']])
-            time.sleep(interval)
+            time.sleep(interval)'''
 # ---------------------- 更新商品 API ----------------------
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
@@ -564,31 +320,27 @@ def update_product(product_id):
         print("❌ 更新失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-# ---------------------- 最新商品 ----------------------
-'''
-@app.route("/latest_product", methods=["GET"])
-def latest_product():
+# ---------------------- 刪除商品 API ----------------------
+@app.route('/product/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT productid, ProName, ExpireDate, Price, ProPrice, Market, Status, ProductType, ImagePath FROM product ORDER BY productid DESC LIMIT 1")
+        # 檢查是否存在
+        cur.execute("SELECT ProductID FROM product WHERE ProductID=%s", (product_id,))
         row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "商品不存在"}), 404
+
+        # 刪除該商品
+        cur.execute("DELETE FROM product WHERE ProductID=%s", (product_id,))
+        mysql.connection.commit()
         cur.close()
-        if row:
-            return jsonify({
-                "ProductID": row[0],
-                "ProName": row[1],
-                "ExpireDate": row[2].strftime('%Y-%m-%d') if row[2] else None,
-                "Price": row[3],
-                "ProPrice": row[4],
-                "Market": row[5],
-                "Status": row[6],
-                "ProductType": row[7],
-                "ImagePath": row[8],
-            }), 200
-        return jsonify({"error": "No product found"}), 404
+
+        return jsonify({"message": f"已刪除 ProductID={product_id}"}), 200
     except Exception as e:
+        print("❌ 刪除商品失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-'''
+    
 # ---------------------- 註冊 ----------------------
 @app.route('/register', methods=['POST'])
 def register():
@@ -719,7 +471,7 @@ def get_products(user_id):
 
         query = """
             SELECT p.productid, p.producttype, p.proname, p.proprice,   
-                   h.created_at, p.expiredate, p.status, p.market, p.ImagePath, h.id as history_id
+                   h.created_at, p.expiredate, p.status, p.market, p.ImagePath, h.id, p.AiPrice as history_id
             FROM history h
             JOIN product p ON h.productid = p.productid
             WHERE h.userid = %s
@@ -757,7 +509,8 @@ def get_products(user_id):
                 'Status': p[6],
                 'Market': p[7],
                 'ImagePath': p[8],
-                'HistoryID': p[9],   # 新增：用來刪除 history 紀錄
+                'HistoryID': p[9],
+                'AiPrice': p[10],   
             })
 
         return jsonify({'products': product_list}), 200
@@ -790,119 +543,450 @@ def delete_history(history_id):
         print("❌ 刪除失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
+
+# ---------------------- 推薦商品 ----------------------
+
+@app.route('/recommend_products/<int:product_id>', methods=['GET'])
+def recommend_products(product_id):
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT Market, ProductType, ExpireDate, Reason FROM product WHERE ProductID=%s", (product_id,))
+    base = cur.fetchone()
+    if not base:
+        cur.close()
+        return jsonify({"error": "找不到商品"}), 404
+
+    market, ptype, exp, reason = base
+
+    if reason == "合理":
+        query = """
+            SELECT p1.*
+            FROM product p1
+            JOIN (
+                SELECT ProductType, MIN(ProPrice) AS min_price
+                FROM product
+                WHERE Market=%s AND ExpireDate=%s AND Reason='合理' AND ProductType != %s
+                GROUP BY ProductType
+            ) p2 ON p1.ProductType=p2.ProductType AND p1.ProPrice=p2.min_price
+        """
+        cur.execute(query, (market, exp, ptype))
+    else:
+        query = """
+            SELECT * FROM product
+            WHERE Market=%s AND ExpireDate=%s AND ProductType=%s AND Reason='合理'
+            ORDER BY ProPrice ASC LIMIT 6
+        """
+        cur.execute(query, (market, exp, ptype))
+
+    rows = cur.fetchall()
+    # ✅ 這裡先取得欄位描述
+    desc = cur.description
+    cur.close()
+
+    if not desc:
+        return jsonify([]), 200  # 沒有資料就回空陣列避免 TypeError
+
+    cols = [d[0] for d in desc]
+    result = [dict(zip(cols, row)) for row in rows]
+    return jsonify(result), 200
+
+
 # ---------------------- 啟動 ----------------------
 # 你的 auto_update_prices 函式定義在這裡
 if __name__ == '__main__':
 
     # 啟動背景自動降價 Thread
-    thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
-    thread.start()
+    '''thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
+    thread.start()'''
 
     app.run(host='0.0.0.0', port=5000, debug=True)
------------------------------------------------------------
-//main.dart
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
-// import pages
-import 'pages/splash_screen.dart'; 
-import 'pages/scanning_picture_page.dart';
-import 'pages/recognition_loading_page.dart';
-import 'pages/recognition_result_page.dart';
-import 'pages/recognition_edit_page.dart';
-import 'pages/register_login_page.dart';
-import 'pages/member_history_page.dart';
-import 'pages/counting.dart';
-import 'pages/countingresult.dart';
-import 'pages/adviceproduct.dart';
-import 'pages/member_profile_page.dart'; 
-import 'pages/member_edit_page.dart'; 
+#-----------------------------------------------------------
+//ml_model.py
+import pandas as pd
+import joblib
+import numpy as np
+import pytz
 
-void main() {
-  runApp(const MyApp());
-}
+# ----------------- 模型載入 -----------------
+try:
+    model = joblib.load("random_forest_model.pkl")
+    feature_cols = model.feature_names_in_  # ⚡ 全域
+    print("✅ 已載入真實模型")
+except Exception as e:
+    print("⚠️ 無法載入模型，改用 FakeModel:", e)
+    feature_cols = ['剩餘保存期限_小時','原價',
+                    '人流量_少', '人流量_一般', '人流量_多',
+                    '天氣_晴天', '天氣_陰天', '天氣_雨天',
+                    '停車狀況_少', '停車狀況_一般', '停車狀況_多',
+                    '商品大類_肉類','商品大類_魚類','商品大類_蔬果類','商品大類_其他']
+    class FakeModel:
+        def predict(self, X):
+            values = np.random.rand(len(X)) * 0.5
+            print("🔍 FakeModel 輸出:", values)
+            return values
+    model = FakeModel()
+# ----------------- feature_cols 現在是全域變數 -----------------
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+def prepare_features(df):
+    df = df.copy()
+    
+    # 商品名稱與價格
+    df['ProName'] = df.get('ProName', '未知商品')
+    # 確認 price 與 ProPrice 來源正確
+    df['price'] = pd.to_numeric(df.get('price', 0), errors='coerce').fillna(0).astype(float)
+    df['ProPrice'] = pd.to_numeric(df.get('ProPrice', 0), errors='coerce').fillna(0).astype(float)
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '碳即',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.green),
+    df['原價'] = df['price']  # 原價欄位保留 price 的值
 
-      // localization (保持不變)
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('zh', 'TW'),
-        Locale('en', 'US'),
-      ],
+    # 取得「本地」當下時間（指定時區為台北）
+    local_tz = 'Asia/Taipei'
+    now = pd.Timestamp.now(tz=local_tz)
+    
+    # 修正後
+    expire = pd.to_datetime(df.get('ExpireDate'), errors='coerce')
+    expire = expire.dt.tz_localize('Asia/Taipei', ambiguous='NaT', nonexistent='NaT')
+    
+    # fallback：若無法解析，嘗試視為本地時間
+    mask_nat = expire.isna()
+    if mask_nat.any():
+        fallback = pd.to_datetime(df.loc[mask_nat, 'ExpireDate'], errors='coerce')
+        fallback = fallback.dt.tz_localize(local_tz, ambiguous='NaT', nonexistent='NaT')
+        expire.loc[mask_nat] = fallback
 
-      // 應用程式永遠從 /splash 啟動
-      initialRoute: '/splash',
-      routes: {
-        // ------------------ 啟動畫面路由 ------------------
-        '/splash': (context) => const SplashScreen(),
+    # 🕓 若時間為「整日」（例如 2025-10-18 00:00:00），視為當日 23:59:59
+    expire = expire.apply(
+        lambda x: x + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        if (not pd.isna(x) and x.hour == 0 and x.minute == 0 and x.second == 0)
+        else x
+    )
 
-        // ------------------ 會員相關路由 ------------------
-        '/login': (context) => const RegisterLoginPage(), 
+    # 計算剩餘時間（小時）
+    delta_hours = (expire - now).dt.total_seconds().div(3600)
+    df['剩餘保存期限_小時'] = delta_hours.clip(lower=0).fillna(0)
 
-        // 注意：/member_history 可能也需要修改，因為它的參數也是硬編碼的
-        '/member_history': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return MemberHistoryPage(
-            userId: args['userId'],
-            userName: args['userName'],
-            token: args['token'],
-          );
-        },
+    # 轉成可讀格式
+    def format_remaining_time(expire_ts, now_ts):
+        if pd.isna(expire_ts):
+            return "未知"
+        delta = expire_ts - now_ts
+        if delta.total_seconds() <= 0:
+            return "已過期"
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{days}天 {hours}小時 {minutes}分 {seconds}秒"
+
+    df['剩餘時間_可讀'] = expire.apply(lambda x: format_remaining_time(x, now))
+
+    # ✅ debug 印出確認
+    print("🕒 剩餘時間檢查（台北時區）:")
+    print(df[['ProName', 'ExpireDate', '剩餘保存期限_小時', '剩餘時間_可讀']])
+
+    
+    # 預設欄位
+    df['人流量'] = '一般'
+    df['天氣'] = '晴天'
+    df['停車狀況'] = '一般'
+    df['當下溫度'] = 25
+    df['貨架上庫存量'] = 10
+    
+    # 商品大類
+    if '商品大類' not in df.columns and 'ProductType' in df.columns:
+        df['商品大類'] = df['ProductType']
+    elif '商品大類' not in df.columns:
+        df['商品大類'] = '其他'
+    
+    # one-hot encode
+    df = pd.get_dummies(df, columns=['人流量','天氣','停車狀況','商品大類'])
+    
+    # 統一欄位名稱格式（移除空格）
+    df.columns = df.columns.str.replace(' ', '')
+
+    # 補上模型要求的欄位
+    for col in feature_cols:
+        if col not in df.columns:
+            df[col] = 0
+            
+    return df
 
 
-        '/member_profile': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return MemberProfilePage(
-            userId: args['userId'],
-            userName: args['userName'],
-            token: args['token'],
-          );
-        },
-        
-        '/member_edit': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return MemberEditPage(
-            userId: args['userId'],
-            userName: args['userName'],
-            phone: args['phone'],
-            email: args['email'],
-            token: args['token'],
-          );
-        },
+def predict_price(df, update_db=True, mysql=None):
+    print("📌 price 與 ProPrice 對照檢查：")
+    print(df[['ProductID','ProName','price','ProPrice']])
 
-        // ------------------ 掃描與識別路由 (保持不變) ------------------
-        '/scan': (context) => ScanningPicturePage(),
-        '/counting': (context) => LoadingPage(),
-        '/countingResult': (context) => CountingResult(),
-        '/loading': (context) => RecognitionLoadingPage(),
-        '/resultCheck': (context) => RecognitionResultPage(),
-        '/edit': (context) => RecognitionEditPage(),
+    """
+    df: pandas DataFrame, 至少需包含 ProPrice
+    update_db: 是否直接更新 MySQL product 表的 AiPrice 與 Reason
+    mysql: 若 update_db=True，需傳入 mysql 連線物件
+    """
+    df = df.copy()
 
-        // ------------------ 推薦商品路由 (保持不變) ------------------
-        '/advice_product': (context) => Scaffold(
-          appBar: AppBar(title: const Text('推薦商品')),
-          body: AdviceProductList(
-            scrollController: ScrollController(),
-          ),
-        ),
-      },
-    );
-  }
-}
----------------------------------------------------
+    # 先用 prepare_features 計算欄位、剩餘時間、one-hot 等
+    df_full = prepare_features(df)
+
+    # ⚡ 只取模型訓練過的欄位
+    X = df_full[feature_cols]
+    #X = prepare_features(df)
+
+    print("🧩 輸入給模型的欄位：", list(X.columns))
+    print("📊 前幾筆輸入數據：")
+    print(X.head())
+
+    # AI 折扣
+    df['AI折扣'] = model.predict(X).round(2)
+    
+    # 確保數值型別正確
+    df['ProPrice'] = pd.to_numeric(df['ProPrice'], errors='coerce').fillna(0).astype(float)
+    df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(float)
+    df['AiPrice'] = (df['price'] * (1 - df['AI折扣'])).round(0).astype(float)
+
+    df['差異'] = df['AiPrice'] - df['ProPrice']
+    print("🛠 AiPrice 與 ProPrice 差異檢查：")
+    print(df[['ProductID','ProName','AiPrice','ProPrice','差異', 'AI折扣']])
+
+    # 判斷合理性（允許誤差 ±1）
+    df['Reason'] = df.apply(
+        lambda r: "合理" if np.isclose(r['AiPrice'], r['ProPrice'], atol=1) or r['AiPrice'] >= r['ProPrice']
+        else "不合理",
+        axis=1
+    )
+
+
+    # 若需要直接更新資料庫
+    if update_db and mysql is not None:
+        try:
+            cur = mysql.connection.cursor()
+            for _, row in df.iterrows():
+                cur.execute(
+                    "UPDATE product SET AiPrice=%s, Reason=%s WHERE ProductID=%s",
+                    (row['AiPrice'], row['Reason'], row['ProductID'])
+                )
+            mysql.connection.commit()
+            cur.close()
+        except Exception as e:
+            print("❌ 更新 AiPrice 失敗:", e)
+    
+    return df[['ProductID','ProName','ProPrice','AI折扣','AiPrice','Reason']]
+
+# === ✅ 測試區 ===
+# if __name__ == "__main__":
+#     test_df = pd.DataFrame([
+#         {
+#             'ProductID': 1,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-19 20:00',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 2,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-18 23:00',
+#             'ProductType': '魚類'
+#         },
+#         {
+#             'ProductID': 3,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-18 00:00',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 4,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-20 00:00:00',
+#             'ProductType': '魚類'
+#         }
+#         ,
+#         {
+#             'ProductID': 5,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-16 00:00:00',
+#             'ProductType': '水果'
+#         }
+#         ,
+#         {
+#             'ProductID': 6,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-19 00:14:00',
+#             'ProductType': '水果'
+#         }
+#     ])
+
+#     result = predict_price(test_df, update_db=False)
+#     print("模型特徵欄位:", feature_cols)
+#     print(result)
+#-----------------------------------------------------------
+//ML.py
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+import re
+import joblib
+
+# -----------------------------
+# 1️讀取資料
+# -----------------------------
+df = pd.read_csv("畢業專題田野調查.csv", encoding="utf-8-sig")
+# -----------------------------
+# 🔹將剩餘保存期限(天) + 時間細化成小時
+# -----------------------------
+
+def compute_remaining_hours(row):
+    # 剩餘保存期限（天轉小時）
+    hours = row['剩餘保存期限'] * 24
+
+    # 從時間欄位中取出「結束時間」的時數
+    time_str = str(row['時間'])
+    match = re.search(r'(\d{1,2}):\d{2}-(\d{1,2}):\d{2}', time_str)
+    if match:
+        end_hour = int(match.group(2))
+    else:
+        end_hour = 0  # 防呆
+
+    # 計算今日剩下幾小時（假設每天24:00結束）
+    remaining_today = 24 - end_hour
+
+    # 總剩餘時間（單位：小時）
+    total_hours = hours + remaining_today
+    return total_hours
+
+# 新增欄位：剩餘保存期限_小時
+df['剩餘保存期限_小時'] = df.apply(compute_remaining_hours, axis=1)
+
+print(df[['時間', '剩餘保存期限', '剩餘保存期限_小時']].head())
+# -----------------------------
+# 2️規則型折扣
+# -----------------------------
+def calc_rule_discount(row):
+    hours = row['剩餘保存期限_小時']  # ✅ 改用小時計算
+
+    if row['商品大類'] == '肉類':
+        if hours <= 6: return 0.6
+        elif hours <= 12: return 0.45
+        elif hours <= 24: return 0.3
+        elif hours <= 48: return 0.15
+        else: return 0
+
+    elif row['商品大類'] == '魚類':
+        if hours <= 6: return 0.5
+        elif hours <= 12: return 0.35
+        elif hours <= 24: return 0.25
+        elif hours <= 48: return 0.1
+        else: return 0
+
+    elif row['商品大類'] == '蔬果類':
+        if hours <= 6: return 0.45
+        elif hours <= 12: return 0.3
+        elif hours <= 24: return 0.2
+        elif hours <= 48: return 0.1
+        else: return 0
+
+    elif row['商品大類'] == '麵包甜點類':
+        if hours <= 6: return 0.4
+        elif hours <= 12: return 0.25
+        elif hours <= 24: return 0.15
+        elif hours <= 48: return 0.05
+        else: return 0
+
+    elif row['商品大類'] == '豆製品類':
+        if hours <= 6: return 0.35
+        elif hours <= 12: return 0.25
+        elif hours <= 24: return 0.15
+        elif hours <= 48: return 0.05
+        else: return 0
+
+    elif row['商品大類'] == '熟食/其他':
+        if hours <= 6: return 0.3
+        elif hours <= 12: return 0.2
+        elif hours <= 24: return 0.1
+        elif hours <= 48: return 0.05
+        else: return 0
+
+    elif row['商品大類'] == '其他':
+        if hours <= 6: return 0.25
+        elif hours <= 12: return 0.15
+        elif hours <= 24: return 0.1
+        elif hours <= 48: return 0.05
+        else: return 0
+
+    else:
+        return 0
+
+
+
+df['折扣規則'] = df.apply(calc_rule_discount, axis=1)
+df['售價規則'] = df['原價'] * (1 - df['折扣規則'])
+
+# -----------------------------
+# 3️準備機器學習特徵
+# -----------------------------
+# 將商品大類轉為 One-Hot
+# 對所有類別欄位做 One-Hot
+df = pd.get_dummies(df, columns=['商品大類', '停車狀況', '人流量', '天氣'])
+cols = [c for c in df.columns if '_' in c]
+df[cols] = df[cols].fillna(0).astype(int)
+
+# 特徵欄位
+feature_cols = ['剩餘保存期限_小時','原價','當下溫度','貨架上庫存量'] \
+               + [c for c in df.columns if c.startswith('商品大類_')] \
+               + [c for c in df.columns if c.startswith('停車狀況_')] \
+               + [c for c in df.columns if c.startswith('人流量_')] \
+               + [c for c in df.columns if c.startswith('天氣_')]
+
+X = df[feature_cols]
+y = df['折扣規則']  # 監督學習目標：學規則折扣
+
+# -----------------------------
+# 4️拆分訓練/測試集
+# -----------------------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# -----------------------------
+# 5️訓練 Random Forest
+# -----------------------------
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# 預測
+y_pred = model.predict(X_test)
+print("MSE:", mean_squared_error(y_test, y_pred))
+
+# -----------------------------
+# 6️用模型預測折扣
+# -----------------------------
+df['折扣預測'] = model.predict(X[feature_cols])
+df['售價預測'] = df['原價'] * (1 - df['折扣預測'])
+
+# -----------------------------
+# 7️查看結果
+# -----------------------------
+print(df[['商品品項','剩餘保存期限_小時','折扣規則','售價規則','折扣預測','售價預測']])
+
+# -----------------------------
+# 8️存檔
+# -----------------------------
+#df.to_csv("dynamic_pricing_result.csv", index=False)
+output_path = "dynamic_pricing_result.csv"
+df.to_csv(output_path, index=False, encoding="utf-8-sig")
+print("已存檔：dynamic_pricing_result.csv")
+
+# 儲存模型
+model_path = "random_forest_model.pkl"
+joblib.dump(model, model_path)
+print("模型已儲存：", model_path)
+#---------------------------------------------------
 //api_service.dart
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -912,7 +996,7 @@ import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
-  static const String baseUrl = 'http://192.168.0.129:5000'; 
+  static const String baseUrl = 'http://172.20.10.2:5000'; 
 }
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
@@ -1156,339 +1240,110 @@ Future<double?> fetchAIPrice(int productId) async {
     return null;
   }
 }
----------------------------------------------------
-//register_login_page.dart
+#---------------------------------------------------
+//main.dart
 import 'package:flutter/material.dart';
-import 'member_profile_page.dart';
-import 'scanning_picture_page.dart';
-import 'countingresult.dart';
-import '../services/api_service.dart';
-import '../services/route_logger.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
-// 定義會員頁面的淺綠色背景
-const Color _kLightGreenBg = Color(0xFFE8F5E9);
+// import pages
+import 'pages/splash_screen.dart'; 
+import 'pages/scanning_picture_page.dart';
+import 'pages/recognition_loading_page.dart';
+import 'pages/recognition_result_page.dart';
+import 'pages/recognition_edit_page.dart';
+import 'pages/register_login_page.dart';
+import 'pages/member_history_page.dart';
+import 'pages/counting.dart';
+import 'pages/countingresult.dart';
+import 'pages/adviceproduct.dart';
+import 'pages/member_profile_page.dart'; 
+import 'pages/member_edit_page.dart'; 
 
-// 註冊與登入頁面
-class RegisterLoginPage extends StatefulWidget {
-  const RegisterLoginPage({super.key});
-
-  @override
-  State<RegisterLoginPage> createState() => _RegisterLoginPageState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _RegisterLoginPageState extends State<RegisterLoginPage> {
-  @override
-  void initState() {
-    super.initState();
-    saveCurrentRoute('/login'); // 記錄當前頁面
-  }
-
-  // Logo 區塊 Helper
-  Widget _buildLogo() {
-    return SizedBox(
-      height: 150,
-      width: 300,
-      child: Image.asset(
-        'assets/logo.png',
-        width: 300,
-        fit: BoxFit.contain,
-      ),
-    );
-  }
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: _kLightGreenBg,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 30),
-                  _buildLogo(),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 300,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      children: [
-                        TabBar(
-                          labelColor: Colors.black,
-                          indicatorColor: Colors.green,
-                          tabs: [
-                            Tab(text: '註冊會員'),
-                            Tab(text: '會員登入'),
-                          ],
-                        ),
-                        SizedBox(height: 20),
-                        SizedBox(
-                          height: 450, // 可根據內容調整高度
-                          child: TabBarView(
-                            children: [
-                              RegisterForm(),
-                              LoginForm(),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
+    return MaterialApp(
+      title: '碳即',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.green),
+
+      // localization (保持不變)
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'TW'),
+        Locale('en', 'US'),
+      ],
+
+      // 應用程式永遠從 /splash 啟動
+      initialRoute: '/splash',
+      routes: {
+        // ------------------ 啟動畫面路由 ------------------
+        '/splash': (context) => const SplashScreen(),
+
+        // ------------------ 會員相關路由 ------------------
+        '/login': (context) => const RegisterLoginPage(), 
+
+        // 注意：/member_history 可能也需要修改，因為它的參數也是硬編碼的
+        '/member_history': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return MemberHistoryPage(
+            userId: args['userId'],
+            userName: args['userName'],
+            token: args['token'],
+          );
+        },
+
+
+        '/member_profile': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return MemberProfilePage(
+            userId: args['userId'],
+            userName: args['userName'],
+            token: args['token'],
+          );
+        },
+        
+        '/member_edit': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return MemberEditPage(
+            userId: args['userId'],
+            userName: args['userName'],
+            phone: args['phone'],
+            email: args['email'],
+            token: args['token'],
+          );
+        },
+
+        // ------------------ 掃描與識別路由 (保持不變) ------------------
+        '/scan': (context) => ScanningPicturePage(),
+        '/counting': (context) => LoadingPage(),
+        '/countingResult': (context) => CountingResult(),
+        '/loading': (context) => RecognitionLoadingPage(),
+        '/resultCheck': (context) => RecognitionResultPage(),
+        '/edit': (context) => RecognitionEditPage(),
+
+        // ------------------ 推薦商品路由 (保持不變) ------------------
+        '/advice_product': (context) => Scaffold(
+          appBar: AppBar(title: const Text('推薦商品')),
+          body: AdviceProductList(
+            scrollController: ScrollController(),
           ),
         ),
-      ),
+      },
     );
   }
 }
-
-// 輔助函式: 建立文字輸入框
-Widget buildTextField(String label,
-    {bool obscureText = false, TextEditingController? controller}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: TextField(
-      controller: controller,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-    ),
-  );
-}
-
-// --- 註冊表單 (RegisterForm) ---
-class RegisterForm extends StatefulWidget {
-  const RegisterForm({super.key});
-
-  @override
-  _RegisterFormState createState() => _RegisterFormState();
-}
-
-class _RegisterFormState extends State<RegisterForm> {
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    phoneController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  void submitRegister() async {
-    try {
-      bool isSuccess = await registerUser(
-        nameController.text,
-        phoneController.text,
-        emailController.text,
-        passwordController.text,
-      );
-
-      if (isSuccess && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('註冊成功！請重新登入'), backgroundColor: Colors.green),
-        );
-        await Future.delayed(const Duration(seconds: 2));
-        DefaultTabController.of(context)?.animateTo(1);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('註冊失敗，請重試。'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('發生錯誤: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 上半部分: 輸入欄位
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            buildTextField('姓名', controller: nameController),
-            buildTextField('電話', controller: phoneController),
-            buildTextField('Email', controller: emailController),
-            buildTextField('密碼', controller: passwordController, obscureText: true),
-          ],
-        ),
-        // 下半部分: 按鈕
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: submitRegister,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text(
-                '註冊',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ScanningPicturePage(),
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                side: const BorderSide(color: Color(0xFF274E13)),
-              ),
-              child: const Text(
-                '以訪客身份使用',
-                style: TextStyle(color: Color(0xFF274E13)),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// --- 登入表單 (LoginForm) ---
-class LoginForm extends StatefulWidget {
-  const LoginForm({super.key});
-
-  @override
-  _LoginFormState createState() => _LoginFormState();
-}
-
-class _LoginFormState extends State<LoginForm> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  void submitLogin() async {
-    final user = await loginUser(
-      emailController.text,
-      passwordController.text,
-    );
-
-    if (user != null && mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ScanningPicturePage(
-            userId: user['id'] as int,
-            userName: user['name'] as String,
-            token: user['token'] as String,
-          ),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('登入失敗'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 上半部分: Email / 密碼
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            buildTextField('Email', controller: emailController),
-            buildTextField('密碼', controller: passwordController, obscureText: true),
-          ],
-        ),
-        // 下半部分: 按鈕
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: submitLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text(
-                '登入',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ScanningPicturePage(),
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                side: const BorderSide(color: Color(0xFF274E13)),
-              ),
-              child: const Text(
-                '以訪客身份使用',
-                style: TextStyle(color: Color(0xFF274E13)),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
----------------------------------------------------
+#----------------------------------------------
 //scanning_picture_page.dart
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -1918,8 +1773,7 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     }
   }
 }
-
----------------------------------------------------
+#----------------------------------------------
 //recognition_loading_page.dart
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -2083,7 +1937,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
     );
   }
 }
----------------------------------------------------
+#-----------------------------------------
 //recognition_result_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -2092,6 +1946,29 @@ import 'counting.dart'; // ✅ 導向目標
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
 import 'recognition_loading_page.dart'; 
+import 'package:http/http.dart' as http;
+import '../services/api_service.dart';
+
+
+Future<void> _deleteProductAndRescan(BuildContext context, int productId) async {
+  try {
+    final url = Uri.parse('${ApiConfig.baseUrl}/product/$productId');
+    final response = await http.delete(url);
+
+    if (response.statusCode == 200) {
+      print('✅ 已刪除商品 $productId');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanningPicturePage()),
+      );
+    } else {
+      print('刪除商品失敗: ${response.body}');
+    }
+  } catch (e) {
+    print('連線錯誤: $e');
+  }
+}
+
 
 class RecognitionResultPage extends StatelessWidget {
   final int? userId;
@@ -2232,24 +2109,14 @@ class RecognitionResultPage extends StatelessWidget {
 
             // 「重新掃描」按鈕
             ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ScanningPicturePage(
-                      userId: userId,
-                      userName: userName,
-                      token: token,
-                    ),
-                  ),
-                );
+              onPressed: () async {
+                final productId = productInfo?["ProductID"];
+                if (productId != null) {
+                  await _deleteProductAndRescan(context, productId);
+                }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 51, 138, 179),
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('重新掃描',
-                  style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('重新掃描', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -2257,7 +2124,7 @@ class RecognitionResultPage extends StatelessWidget {
     );
   }
 }
----------------------------------------------------
+#---------------------------------------------
 //recognition_edit_page.dart
 import 'dart:convert';
 import 'dart:io';
@@ -2489,13 +2356,17 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
     );
   }
 }
----------------------------------------------------
+#-----------------------------------------
 //counting.dart
 import 'package:flutter/material.dart';
-import 'dart:async'; // 確保引入 dart:async
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/route_logger.dart';
 import 'countingresult.dart';
 import 'dart:io';
+import '../services/api_service.dart';
+
 
 class LoadingPage extends StatefulWidget {
   final int? userId;
@@ -2504,7 +2375,14 @@ class LoadingPage extends StatefulWidget {
   final String? imagePath;
   final Map<String, dynamic>? productInfo;
 
-  const LoadingPage({super.key, this.userId, this.userName, this.token, this.imagePath, this.productInfo});
+  const LoadingPage({
+    super.key,
+    this.userId,
+    this.userName,
+    this.token,
+    this.imagePath,
+    this.productInfo,
+  });
 
   @override
   State<LoadingPage> createState() => _LoadingPageState();
@@ -2514,13 +2392,62 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   void initState() {
     super.initState();
-    saveCurrentRoute('/counting'); // 記錄當前頁面
-    
-    // 🎯 保持原始邏輯：模擬計算，2秒後跳轉到結果頁
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) { 
-        // 使用 pushReplacement 較佳，但為保持原邏輯，這裡使用 push
-        Navigator.push(
+    saveCurrentRoute('/counting');
+
+    // 延遲 0.5 秒後開始呼叫 API 計算
+    Future.delayed(const Duration(milliseconds: 500), _fetchAiPriceAndGo);
+  }
+
+  Future<void> _fetchAiPriceAndGo() async {
+    if (widget.productInfo == null) return;
+
+    try {
+      final productId = widget.productInfo!["ProductID"];
+
+      // 🔹 呼叫後端 /predict_price API
+      final uri = Uri.parse("${ApiConfig.baseUrl}/predict_price?productId=$productId");
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+
+        // 找到對應 ProductID 的結果
+        final productData =
+            data.firstWhere((e) => e["ProductID"] == productId, orElse: () => null);
+
+        if (productData != null) {
+          final updatedProductInfo = {
+            ...?widget.productInfo,
+            "AiPrice": productData["AiPrice"],
+            "Reason": productData["Reason"],
+          };
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CountingResult(
+                  userId: widget.userId,
+                  userName: widget.userName,
+                  token: widget.token,
+                  imagePath: widget.imagePath,
+                  productInfo: updatedProductInfo,
+                ),
+              ),
+            );
+          }
+        } else {
+          throw Exception("找不到對應的 ProductID");
+        }
+      } else {
+        throw Exception("API 回傳錯誤: ${response.statusCode}");
+      }
+    } catch (e) {
+      debugPrint("❌ 呼叫 AI 價格 API 發生錯誤: $e");
+
+      // 🔹 出錯也跳轉到結果頁顯示原始資料
+      if (mounted) {
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => CountingResult(
@@ -2533,47 +2460,40 @@ class _LoadingPageState extends State<LoadingPage> {
           ),
         );
       }
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9), // 背景色保持不變
-      body: Center( // 🎯 移除 SafeArea，直接使用 Center
+      backgroundColor: const Color(0xFFE8F5E9),
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // LOGO
             Image.asset(
-              'assets/logo.png', // 您的 Logo 圖片路徑
-              height: 140, // 🎯 調整圖片高度為 140
+              'assets/logo.png',
+              height: 140,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 40), // 🎯 調整間距為 40
-
-            // 標題文字
+            const SizedBox(height: 40),
             const Text(
-              '價格計算中...', // 保持原始文字
+              '價格計算中...',
               style: TextStyle(
-                fontSize: 20, // 🎯 調整字體大小為 20
-                fontWeight: FontWeight.bold, // 🎯 調整字體粗細為 bold
-                color: Colors.black, // 🎯 調整文字顏色為黑色
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 10),
-            
-            // 副標題文字
             const Text(
               '請稍待',
               style: TextStyle(
-                fontSize: 16, // 🎯 調整字體大小為 16
-                color: Colors.black54, // 🎯 調整文字顏色為 Colors.black54
+                fontSize: 16,
+                color: Colors.black54,
               ),
             ),
-            const SizedBox(height: 30), // 🎯 調整間距為 30
-
-            // 🎯 loading indicator
+            const SizedBox(height: 30),
             const CircularProgressIndicator(color: Colors.green),
           ],
         ),
@@ -2581,7 +2501,7 @@ class _LoadingPageState extends State<LoadingPage> {
     );
   }
 }
----------------------------------------------------
+#-------------------------------------------
 //countingresult.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -2598,6 +2518,7 @@ class CountingResult extends StatefulWidget {
   final String? token;
   final String? imagePath;
   final Map<String, dynamic>? productInfo;
+  final bool autoUpdateAIPrice; // 新增：是否自動更新 AI 價格
 
   const CountingResult({
     super.key,
@@ -2606,6 +2527,7 @@ class CountingResult extends StatefulWidget {
     this.token,
     this.imagePath,
     this.productInfo,
+    this.autoUpdateAIPrice = false,
   });
 
   @override
@@ -2615,14 +2537,27 @@ class CountingResult extends StatefulWidget {
 class _CountingResultState extends State<CountingResult> {
   static const Color _standardBackground = Color(0xFFE8F5E9);
   bool _hasShownGuestDialog = false;
-  double? AiPrice; // <-- 這裡存從 API 拿到的 AI 價格
+  double? AiPrice;
+  int? productId;
+  String? reason;
 
   @override
   void initState() {
     super.initState();
     saveCurrentRoute('/countingResult');
 
-    _fetchAIPrice(); // 初始化時抓 AI 價格
+    // 解析 productInfo
+    final info = widget.productInfo ?? {};
+    productId = info["ProductID"];
+    reason = info["Reason"];
+    AiPrice = (info["AiPrice"] != null)
+        ? double.tryParse(info["AiPrice"].toString())
+        : null;
+
+    // ⚡ 若設定 autoUpdateAIPrice，則再抓最新價格
+    if (widget.autoUpdateAIPrice && productId != null) {
+      _fetchAIPrice();
+    }
   }
 
   bool _isGuest() => widget.userId == null || widget.token == null;
@@ -2644,7 +2579,8 @@ class _CountingResultState extends State<CountingResult> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
+          content: const Text(
+              "您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
           actions: [
             TextButton(
               onPressed: () async {
@@ -2715,18 +2651,23 @@ class _CountingResultState extends State<CountingResult> {
       },
     );
   }
-  /// -------------------------- 抓 AI 價格 --------------------------
-Future<void> _fetchAIPrice() async {
-  final productId = widget.productInfo?["ProductID"];
-  if (productId == null) return;
 
-  final value = await fetchAIPrice(productId); // API 回傳 AiPrice
-  if (mounted && value != null) {
-    setState(() {
-      AiPrice = value;
-    });
+  /// -------------------------- 抓 AI 價格 --------------------------
+  Future<void> _fetchAIPrice() async {
+    if (productId == null) return;
+    final value = await fetchAIPrice(productId!);
+    if (mounted && value != null) {
+      setState(() {
+        AiPrice = value;
+      });
+    }
   }
-}
+
+  Color getReasonColor(String? reason) {
+    if (reason == "合理") return Colors.green;
+    if (reason == "不合理") return Colors.red;
+    return Colors.black;
+  }
 
   /// -------------------------- Build --------------------------
   @override
@@ -2736,7 +2677,6 @@ Future<void> _fetchAIPrice() async {
     final expireDate = info["ExpireDate"] ?? "未知日期";
     final price = info["Price"]?.toString() ?? "未知";
     final proPrice = info["ProPrice"]?.toString() ?? "未知";
-    //const aiPrice = "300";
 
     return Scaffold(
       backgroundColor: _standardBackground,
@@ -2780,7 +2720,8 @@ Future<void> _fetchAIPrice() async {
                                   width: 35,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF388E3C).withOpacity(0.5),
+                                    color: const Color(0xFF388E3C)
+                                        .withOpacity(0.5),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(Icons.account_circle,
@@ -2788,7 +2729,9 @@ Future<void> _fetchAIPrice() async {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  _isGuest() ? "訪客" : (widget.userName ?? "會員"),
+                                  _isGuest()
+                                      ? "訪客"
+                                      : (widget.userName ?? "會員"),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF388E3C),
@@ -2807,7 +2750,7 @@ Future<void> _fetchAIPrice() async {
                         ),
                         // 右上角再次掃描 icon
                         Material(
-                          color: const Color.fromARGB(0, 0, 0, 0),
+                          color: Colors.transparent,
                           shape: const CircleBorder(),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(50),
@@ -2830,7 +2773,8 @@ Future<void> _fetchAIPrice() async {
                             child: const Padding(
                               padding: EdgeInsets.all(4.0),
                               child: Icon(Icons.fullscreen,
-                                  size: 30, color: Color.fromARGB(221, 38, 92, 31)),
+                                  size: 30,
+                                  color: Color.fromARGB(221, 38, 92, 31)),
                             ),
                           ),
                         ),
@@ -2838,6 +2782,7 @@ Future<void> _fetchAIPrice() async {
                     ),
                   ),
                   const SizedBox(height: 20),
+
                   // 商品卡片
                   Container(
                     width: 330,
@@ -2883,21 +2828,27 @@ Future<void> _fetchAIPrice() async {
                           children: [
                             buildPriceBox("即期價格", "\$$proPrice",
                                 isDiscount: false),
-                            buildPriceBox("AI定價", AiPrice != null
+                            buildPriceBox(
+                                "AI定價",
+                                AiPrice != null
                                     ? "\$${AiPrice!.toInt()}"
                                     : "計算中...",
                                 isDiscount: true),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          "‼ 目前價格落於合理範圍 ‼",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
+
+                        if (reason != null)
+                          Text(
+                            reason == "合理"
+                                ? "✅ 目前價格落於合理範圍 ✅"
+                                : "‼ 目前價格不合理 ‼",
+                            style: TextStyle(
+                              color: getReasonColor(reason),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -2905,7 +2856,8 @@ Future<void> _fetchAIPrice() async {
                 ],
               ),
             ),
-            // 推薦商品
+
+            // 推薦商品區塊
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               minChildSize: 0.15,
@@ -2924,7 +2876,11 @@ Future<void> _fetchAIPrice() async {
                       ),
                     ],
                   ),
-                  child: AdviceProductList(scrollController: scrollController),
+                  child: AdviceProductList(
+                    scrollController: scrollController,
+                    productId: productId,
+                    reason: reason,
+                  ),
                 );
               },
             ),
@@ -2934,8 +2890,7 @@ Future<void> _fetchAIPrice() async {
     );
   }
 
-  Widget buildPriceBox(String title, String price,
-      {bool isDiscount = false}) {
+  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(
@@ -2970,1099 +2925,130 @@ Future<void> _fetchAIPrice() async {
     );
   }
 }
----------------------------------------------------
+#-------------------------------------------
 //adviceproduct.dart
 import 'package:flutter/material.dart';
-import '../services/route_logger.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../services/api_service.dart';
 
 class AdviceProductList extends StatefulWidget {
   final ScrollController scrollController;
-  const AdviceProductList({super.key, required this.scrollController});
+  final int? productId;
+  final String? reason;
+
+  const AdviceProductList({
+    Key? key,
+    required this.scrollController,
+    this.productId,
+    this.reason,
+  }) : super(key: key);
 
   @override
   State<AdviceProductList> createState() => _AdviceProductListState();
 }
 
 class _AdviceProductListState extends State<AdviceProductList> {
-  @override
-  void initState() {
-    super.initState();
-    saveCurrentRoute('/advice_product'); // 記錄當前頁面
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      controller: widget.scrollController,
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Center(
-          child: Icon(Icons.drag_handle, color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          "先別離開！根據掃描的商品，您也能考慮以下商品：",
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          children: const [
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 30,
-              expiry: "效期剩1天",
-            ),
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 28,
-              expiry: "效期剩1天",
-            ),
-            ProductCard(
-              imageUrl: "assets/milk.jpg",
-              price: 25,
-              expiry: "效期剩5小時",
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// ProductCard 保持不變
-class ProductCard extends StatelessWidget {
-  final String imageUrl;
-  final double price;
-  final String expiry;
-
-  const ProductCard({
-    super.key,
-    required this.imageUrl,
-    required this.price,
-    required this.expiry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: const Color(0xFFD9EAD3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Image.asset(imageUrl, fit: BoxFit.contain),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "\$$price",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              expiry,
-              style: const TextStyle(fontSize: 12, color: Colors.red),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
----------------------------------------------------
-//member_pofile_page.dart
-import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../services/route_logger.dart';
-import 'scanning_picture_page.dart';
-import 'member_history_page.dart';
-
-// 定義顏色常量
-const Color _kPrimaryGreen = Color(0xFF388E3C);
-const Color _kLightGreenBg = Color(0xFFE8F5E9);
-const Color _kCardBg = Color(0xFFF1F8E9);
-const Color _kAccentOrange = Color(0xFFFFB300);
-
-class MemberProfilePage extends StatefulWidget {
-  final int userId;
-  final String userName;
-  final String token;
-
-  const MemberProfilePage({
-    super.key,
-    required this.userId,
-    required this.userName,
-    required this.token,
-  });
-
-  @override
-  State<MemberProfilePage> createState() => _MemberProfilePageState();
-}
-
-class _MemberProfilePageState extends State<MemberProfilePage> {
-  // 使用 String 而非 TextEditingController
-  String _name = '';
-  String _phone = '';
-  String _email = '';
+  List<dynamic> _recommendations = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _name = widget.userName; // 預設名稱
-    _loadUserData();
-    saveCurrentRoute('/member_profile');
+    _fetchRecommendations();
   }
 
-  // --- 載入會員資料 ---
-  Future<void> _loadUserData() async {
-    final userData = await fetchUserData(widget.userId, widget.token);
-    if (userData != null && mounted) {
-      setState(() {
-        _name = userData['name'] ?? widget.userName;
-        _phone = userData['phone'] ?? '';
-        _email = userData['email'] ?? '';
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('載入會員資料失敗'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _kLightGreenBg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        toolbarHeight: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: _kPrimaryGreen))
-          : SafeArea(
-              child: SingleChildScrollView(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 10), // 保留頂部間距
-                          // 1. LOGO (使用 Padding 控制與下方卡片的間距)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 60.0, bottom: 20.0), // 統一使用 20.0 的底部間距
-                            child: _buildLogo(),
-                          ),
-                          
-                          // 2. 個人資料卡片
-                          _buildProfileCard(context),
-
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-
-  // LOGO 區塊 (高度調整為 160，與 MemberEditPage 保持一致)
-  Widget _buildLogo() {
-    return SizedBox(
-      height: 160, // 調整為 160
-      width: double.infinity,
-      child: Center(
-        child: Image.asset(
-          'assets/logo.png',
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-        ),
-      ),
-    );
-  }
-
-  // 個人資料卡片
-  Widget _buildProfileCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-      decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(20.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 頂部操作
-          _buildActionButtons(context),
-          const SizedBox(height: 10),
-
-          // 頭像
-          const Center(
-            child: CircleAvatar(
-              radius: 40,
-              backgroundColor: Color(0xFFDCEDC8),
-              child: Icon(Icons.person, size: 50, color: _kPrimaryGreen),
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          // 資料顯示
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 280),
-              child: Column(
-                children: [
-                  _buildDataRow('姓名', _name),
-                  const SizedBox(height: 15),
-                  _buildDataRow('電話', _phone),
-                  const SizedBox(height: 15),
-                  _buildDataRow('Email', _email),
-                  const SizedBox(height: 15),
-                  _buildDataRow('密碼', '********'),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          // 修改按鈕 → 進入 /member_edit
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () async {
-                final bool? needsReload = await Navigator.pushNamed(
-                  context,
-                  '/member_edit',
-                  arguments: {
-                    'userId': widget.userId,
-                    'userName': _name,
-                    'phone': _phone,
-                    'email': _email,
-                    'token': widget.token,
-                  },
-                ) as bool?;
-
-                if (needsReload == true && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
-                  );
-                  _loadUserData(); // ✅ 重新讀會員資料
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: _kAccentOrange,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 5,
-              ),
-              child: const Text('修改', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          const SizedBox(height: 15),
-
-          // 登出
-          _buildLogoutButton(context),
-        ],
-      ),
-    );
-  }
-
-  // 頂部操作按鈕
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildIconTextButton(
-          context,
-          '歷史記錄',
-          Icons.description,
-          () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MemberHistoryPage(
-                    userId: widget.userId,
-                    userName: widget.userName,
-                    token: widget.token,
-                  ),
-                ),
-              ),
-        ),
-        _buildIconTextButton(
-          context,
-          '掃描',
-          Icons.fullscreen,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ScanningPicturePage(
-                userId: widget.userId,
-                userName: widget.userName,
-                token: widget.token,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Icon + 文字按鈕
-  Widget _buildIconTextButton(BuildContext context, String label, IconData icon, VoidCallback onTap) {
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: _kPrimaryGreen,
-        padding: EdgeInsets.zero,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: _kPrimaryGreen),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 16, color: _kPrimaryGreen)),
-        ],
-      ),
-      // 保持原始的邏輯和樣式
-    );
-  }
-
-  // 資料顯示列
-  Widget _buildDataRow(String label, String value) {
-    final displayValue = value.isEmpty ? '未填寫' : value;
-    final displayColor = value.isEmpty ? Colors.grey[600] : Colors.black;
-
-    return Row(
-      children: [
-        SizedBox(
-          width: 60,
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Text(
-            displayValue,
-            style: TextStyle(
-              fontSize: 16,
-              color: displayColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 登出按鈕
-  Widget _buildLogoutButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
-            (route) => false,
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.red[700],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          elevation: 5,
-        ),
-        child: const Text('登出', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-}
----------------------------------------------------
-//member_history_page.dart
-import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../services/route_logger.dart';
-import 'package:intl/intl.dart'; // 💡 新增：用於日期格式化
-import 'scanning_picture_page.dart';
-import '../services/api_service.dart';
-import 'dart:io';
-
-
-
-// 定義顏色常量
-const Color _kPrimaryGreen = Color(0xFF388E3C);
-const Color _kLightGreenBg = Color(0xFFE8F5E9); 
-const Color _kCardBg = Color(0xFFF1F8E9); 
-const Color _kAccentRed = Color(0xFFD32F2F); 
-
-class MemberHistoryPage extends StatefulWidget {
-  final int? userId;
-  final String? userName;
-  final String? token;
-
-  const MemberHistoryPage({super.key, this.userId, this.userName, this.token});
-
-  @override
-  State<MemberHistoryPage> createState() => _MemberHistoryPageState();
-}
-
-class _MemberHistoryPageState extends State<MemberHistoryPage> {
-  List<dynamic> products = [];
-  bool isLoading = true;
-  DateTime? _selectedDate;
-  String _searchText = ""; // 搜尋文字
-
-  @override
-  void initState() {
-    super.initState();
-    fetchHistory(); 
-    saveCurrentRoute('/member_history'); 
-  }
-
-  // 日期選擇器
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: _kPrimaryGreen,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: _kPrimaryGreen),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      fetchHistory(date: picked, search: _searchText);
-    }
-  }
-
-  // 抓歷史紀錄 + AI定價
-  Future<void> fetchHistory({DateTime? date, String? search}) async {
-    setState(() => isLoading = true);
-
-    String baseUrl = "${ApiConfig.baseUrl}/get_products/${widget.userId}";
-    Map<String, String> queryParams = {};
-
-    if (date != null) {
-      queryParams["date"] = DateFormat('yyyy-MM-dd').format(date);
-    } else if (_selectedDate != null) {
-      queryParams["date"] = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    }
-
-    if (search != null && search.isNotEmpty) {
-      queryParams["search"] = search;
-    } else if (_searchText.isNotEmpty) {
-      queryParams["search"] = _searchText;
-    }
-
-    final url = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+  Future<void> _fetchRecommendations() async {
+    if (widget.productId == null) return;
 
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
-        },
-      );
+      final url = Uri.parse(
+          "${ApiConfig.baseUrl}/recommend_products/${widget.productId}");
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (mounted) {
-          setState(() {
-            products = data['products'] ?? [];
-            isLoading = false;
-          });
-        }
-        // ✅ 立即抓一次 AI 價格
-        //_refreshAiPrices();
-        // ✅ 初次載入後，立即抓取一次最新 AI 定價
-        await _refreshAiPrices();
-
-        print("✅ 抓到歷史紀錄，共 ${products.length} 筆");
-        for (var p in products) {
-          print("Product: ${p['ProName']}, HistoryID=${p['HistoryID']}, AI=${p['AiPrice']}");
-        }
+        setState(() {
+          _recommendations = data;
+          _isLoading = false;
+        });
       } else {
-        throw Exception("載入失敗: ${response.body}");
+        print("❌ API錯誤: ${response.statusCode}");
       }
     } catch (e) {
-      if (mounted) setState(() => isLoading = false);
-      print("❌ Error fetching history: $e");
-    }
-  }
-  // ✅ 抓取 AI 定價（不再定時，只在 fetchHistory() 後跑一次）
-  Future<void> _refreshAiPrices() async {
-    for (int i = 0; i < products.length; i++) {
-      final product = products[i];
-      double? aiPrice = await fetchAIPrice(product['ProductID']); // 用 ID 抓
-      if (aiPrice != null && mounted) {
-        setState(() {
-          products[i]['AiPrice'] = aiPrice.toInt(); // ✅ 去除 .0
-        });
-      }
-    }
-  }
-
-  // 刪除紀錄
-  void _deleteHistoryItem(int historyId, int index) async {
-    if (historyId == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ 無效的 HistoryID')),
-      );
-      return;
-    }
-
-    try {
-      final url = Uri.parse("${ApiConfig.baseUrl}/history/$historyId");
-      final response = await http.delete(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          products.removeAt(index);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ 已刪除紀錄 (ID=$historyId)')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ 刪除失敗: ${response.body}')),
-        );
-      }
-    } catch (e) {
-      print("❌ 刪除發生錯誤: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ 刪除發生錯誤: $e')),
-      );
+      print("❌ 連線錯誤: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    String titleText = _selectedDate == null 
-        ? '掃描歷史記錄' 
-        : DateFormat('yyyy/MM/dd').format(_selectedDate!);
-
-    return Scaffold(
-      backgroundColor: _kLightGreenBg,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        toolbarHeight: 0,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: SafeArea(
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildCustomHeader(context),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      titleText,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: _kPrimaryGreen,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 400),
-                        child: _buildSearchBar(context),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: isLoading
-                          ? const Center(child: CircularProgressIndicator(color: _kPrimaryGreen))
-                          : products.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    _selectedDate != null 
-                                        ? "當日沒有歷史紀錄"
-                                        : (widget.token == null ? "訪客模式無法保存歷史紀錄" : "目前沒有歷史紀錄"),
-                                    style: const TextStyle(fontSize: 16, color: Colors.black54),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  itemCount: products.length,
-                                  itemBuilder: (context, index) {
-                                    final product = products[index];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 15.0),
-                                      child: _buildHistoryCard(context, product, index),
-                                    );
-                                  },
-                                ),
-                    ),
-                  ],
-                ),
+            Text(
+              widget.reason == "合理"
+                  ? "推薦同賣場、同到期日的其他合理商品"
+                  : "推薦同賣場、同到期日同類型的合理商品",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D32),
               ),
             ),
+            const SizedBox(height: 8),
+
+            // 若還在載入
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_recommendations.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text("目前無推薦商品", style: TextStyle(fontSize: 16)),
+                ),
+              )
+            else
+              ListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: _recommendations.length,
+                itemBuilder: (context, index) {
+                  final item = _recommendations[index];
+                  final name = item["ProName"] ?? "未命名商品";
+                  final price = item["ProPrice"]?.toString() ?? "-";
+                  final imagePath = item["ImagePath"] ?? "";
+                  final expireDate = item["ExpireDate"] ?? "";
+
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    child: ListTile(
+                      leading: imagePath.isNotEmpty
+                          ? Image.network(
+                              "${ApiConfig.baseUrl}/$imagePath",
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.cover,
+                            )
+                          : const Icon(Icons.image_not_supported,
+                              size: 50, color: Colors.grey),
+                      title: Text(name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 16)),
+                      subtitle: Text("即期價：\$${price}\n效期：$expireDate"),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),
     );
   }
-
-  // Header
-  Widget _buildCustomHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-      color: _kLightGreenBg, 
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: _kPrimaryGreen),
-            onPressed: () => Navigator.pop(context), 
-          ),
-          IconButton(
-            icon: const Icon(Icons.fullscreen, color: _kPrimaryGreen), 
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ScanningPicturePage(
-                  userId: widget.userId!,
-                  userName: widget.userName!,
-                  token: widget.token!,
-                ),
-              ),
-            ), 
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // 搜尋欄位 (含日曆)
-  Widget _buildSearchBar(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30.0),
-        border: Border.all(color: Colors.grey[300]!, width: 1.0),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, color: Colors.grey),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: '請輸入商品名稱',
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 0),
-              ),
-              onSubmitted: (value) {
-                setState(() {
-                  _searchText = value;
-                });
-                fetchHistory(search: value);
-              },
-            ),
-          ),
-          GestureDetector(
-            onTap: () => _selectDate(context),
-            child: const Padding(
-              padding: EdgeInsets.only(left: 8.0),
-              child: Icon(Icons.calendar_today, color: _kPrimaryGreen), 
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 單一卡片
-  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> product, int index) {
-    final marketParts = (product['Market'] as String? ?? '未知超市|未知分店').split('|');
-    final market = marketParts[0];
-    final branch = marketParts.length > 1 ? marketParts[1] : '分店';
-    
-    final originalPrice = product['ProPrice'] ?? 0;
-    final suggestedPrice = (product['AiPrice'] ?? 0).toInt(); 
-
-    return Container(
-      padding: const EdgeInsets.all(15.0),
-      decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(15.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 圖片
-          SizedBox(
-            width: 80,
-            child: Column(
-              children: [
-                Container(
-                  width: 60,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(5),
-                    image: DecorationImage(
-                      image: product['ImagePath'] != null
-                        ? NetworkImage("${ApiConfig.baseUrl}${product['ImagePath']}")
-                        : const AssetImage('assets/milk.jpg') as ImageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(market, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                Text(branch, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 15),
-
-          // 文字資訊
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(product['ProName'] ?? '未知商品',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 5),
-                _buildInfoRow('掃描時間', product['ScanDate'] ?? '-'),
-                _buildInfoRow('有效期限', product['ExpireDate'] ?? '-'),
-                _buildPriceRow('即期價格', '\$${originalPrice}', isOriginal: true),
-                _buildPriceRow('AI定價', '\$${suggestedPrice}', isOriginal: true),
-              ],
-            ),
-          ),
-
-          // 刪除按鈕
-          GestureDetector(
-            onTap: () => _deleteHistoryItem(product['HistoryID'] ?? -1, index),
-            child: const Padding(
-              padding: EdgeInsets.only(top: 10.0),
-              child: Icon(Icons.delete_outline, color: _kAccentRed, size: 28),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          Text('$label:', style: const TextStyle(color: Colors.black54, fontSize: 13)),
-          const SizedBox(width: 5),
-          Text(value, style: const TextStyle(color: Colors.black87, fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriceRow(String label, String value, {required bool isOriginal}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        children: [
-          Text(
-            '$label:',
-            style: TextStyle(
-              color: isOriginal ? Colors.black54 : _kAccentRed,
-              fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
-              fontSize: isOriginal ? 14 : 16,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            value,
-            style: TextStyle(
-              color: isOriginal ? Colors.black87 : _kAccentRed,
-              fontWeight: isOriginal ? FontWeight.normal : FontWeight.bold,
-              fontSize: isOriginal ? 14 : 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
----------------------------------------------------
-//member_edit_page.dart
-import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../services/route_logger.dart';
-import 'member_profile_page.dart';
-
-class MemberEditPage extends StatefulWidget {
-  final int userId;
-  final String userName;
-  final String phone;
-  final String email;
-  final String token;
-
-  const MemberEditPage({
-    super.key,
-    required this.userId,
-    required this.userName,
-    required this.phone,
-    required this.email,
-    required this.token,
-  });
-
-  @override
-  State<MemberEditPage> createState() => _MemberEditPageState();
-}
-
-class _MemberEditPageState extends State<MemberEditPage> {
-  late TextEditingController _nameController;
-  late TextEditingController _phoneController;
-  late TextEditingController _emailController;
-  late TextEditingController _passwordController;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    saveCurrentRoute('/member_edit');
-
-    _nameController = TextEditingController(text: widget.userName);
-    _phoneController = TextEditingController(text: widget.phone);
-    _emailController = TextEditingController(text: widget.email);
-    _passwordController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveChanges() async {
-    setState(() => _isLoading = true);
-
-    final success = await updateUserData(
-      userId: widget.userId,
-      token: widget.token,
-      name: _nameController.text.isNotEmpty ? _nameController.text : null,
-      phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-      email: _emailController.text.isNotEmpty ? _emailController.text : null,
-      password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
-      );
-      Navigator.pop(context, true); // ✅ 通知 Profile 要 reload
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('更新失敗'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  // 🎯 LOGO 區塊 (從原始碼複製過來)
-  Widget _buildLogo() {
-    return const SizedBox(
-      height: 160, // 保持 Profile Page 的高度
-      width: double.infinity,
-      child: Center(
-        child: Image(
-          image: AssetImage('assets/logo.png'), // 使用 Image.asset
-          width: double.infinity,
-          fit: BoxFit.fitWidth,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E9),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF388E3C)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: SingleChildScrollView(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 400),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Column(
-                        children: [
-                          // 🎯 替換為圖片 Logo
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0), // 調整間距以適應 Logo 高度
-                            child: _buildLogo(), // 使用新的 Logo Widget
-                          ),
-                          _buildFormCard(),
-                          const SizedBox(height: 20), // 調整底部間距
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildFormCard() {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F8E9),
-        borderRadius: BorderRadius.circular(20.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('編輯個人資料', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 30),
-          _buildTextFieldRow('姓名', _nameController, hintText: '請輸入姓名'),
-          const SizedBox(height: 15),
-          _buildTextFieldRow('電話', _phoneController, hintText: '請輸入電話'),
-          const SizedBox(height: 15),
-          _buildTextFieldRow('帳號', _emailController, hintText: '請輸入Email'),
-          const SizedBox(height: 15),
-          _buildTextFieldRow('密碼', _passwordController, hintText: '請輸入新密碼', obscureText: true),
-          const SizedBox(height: 30),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _saveChanges,
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: const Color(0xFFFFB300),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 5,
-              ),
-              child: const Text('修改', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextFieldRow(String label, TextEditingController controller,
-      {String hintText = '', bool obscureText = false}) {
-    return Row(
-      children: [
-        SizedBox(width: 60, child: Text(label, style: const TextStyle(fontSize: 16))),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            obscureText: obscureText,
-            decoration: InputDecoration(
-              hintText: hintText,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+#--------------------------------------------------

@@ -73,7 +73,7 @@ def extract_prices(texts):
 
 
 def extract_product_info(texts):
-    info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
+    info = {"ProName": None, "ExpireDate": None, "price": None, "ProPrice": None}
     max_length = 0  # 用來記錄目前抓到的最長名稱
     full_text = "\n".join(texts)
 
@@ -92,7 +92,7 @@ def extract_product_info(texts):
 
     # 原價 / 即期價
     price, pro_price = extract_prices(texts)
-    info["Price"] = price
+    info["price"] = price
     info["ProPrice"] = pro_price
 
     return info
@@ -104,15 +104,15 @@ def detect_product_type(name: str) -> str:
     if any(k in name for k in MEAT_KEYWORDS):
         return "肉類"
     if any(k in name for k in SEAFOOD_KEYWORDS):
-        return "海鮮"
+        return "魚類"
     if any(k in name for k in VEG_KEYWORDS):
-        return "蔬果"
+        return "蔬果類"
     if any(k in name for k in BAKERY_KEYWORDS):
-        return "麵包甜點"
+        return "麵包甜點類"
     if any(k in name for k in BEAN_KEYWORDS):
-        return "豆製品"
+        return "豆製品類"
     if any(k in name for k in READY_TO_EAT_KEYWORDS):
-        return "熟食"
+        return "熟食/其他"
     return "其他"
 
 
@@ -180,13 +180,13 @@ def ocr_api():
     try:
         cur = mysql.connection.cursor()
         sql = """
-            INSERT INTO product (ProName, ExpireDate, Price, ProPrice, Market, Status, ProductType, ImagePath)
+            INSERT INTO product (ProName, ExpireDate, price, ProPrice, Market, Status, ProductType, ImagePath)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(sql, (
             info["ProName"],
             expire_date,
-            info["Price"],
+            info["price"],
             info["ProPrice"],
             market,
             status,
@@ -233,11 +233,18 @@ def uploaded_file(filename):
 def predict_price_api():
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate FROM product")
+        # 多抓 Status 欄位
+        cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate, Status FROM product")
         rows = cur.fetchall()
-        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate'])
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status'])
         
-        # 這裡直接呼叫新版 predict_price
+        # 🧹 過濾掉已過期商品
+        before = len(df)
+        df = df[df['Status'] != '已過期']
+        after = len(df)
+        print(f"🔍 已過濾掉 {before - after} 筆已過期商品，剩下 {after} 筆需重新計算")
+
+        # 呼叫 AI 預測
         df = predict_price(df, update_db=True, mysql=mysql)
         
         cur.close()
@@ -246,6 +253,7 @@ def predict_price_api():
         import traceback
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
+
 
 # ---------------------- 背景自動降價 ----------------------
 '''def auto_update_prices(interval=300):  #更新頻率
@@ -289,7 +297,7 @@ def predict_price_api():
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
     data = request.get_json()
-    fields = {k: v for k, v in data.items() if k in ["ProName", "ExpireDate", "Price", "ProPrice", "Market", "Status", "ProductType", "ImagePath"]}
+    fields = {k: v for k, v in data.items() if k in ["ProName", "ExpireDate", "price", "ProPrice", "Market", "Status", "ProductType", "ImagePath"]}
 
     # 如果有更新日期 → 重新計算 Status
     if "ExpireDate" in fields:
@@ -548,7 +556,10 @@ def delete_history(history_id):
 @app.route('/recommend_products/<int:product_id>', methods=['GET'])
 def recommend_products(product_id):
     cur = mysql.connection.cursor()
-    cur.execute("SELECT Market, ProductType, ExpireDate, Reason FROM product WHERE ProductID=%s", (product_id,))
+    cur.execute(
+        "SELECT Market, ProductType, ExpireDate, Reason FROM product WHERE ProductID=%s",
+        (product_id,)
+    )
     base = cur.fetchone()
     if not base:
         cur.close()
@@ -558,44 +569,101 @@ def recommend_products(product_id):
 
     if reason == "合理":
         query = """
-            SELECT p1.*
-            FROM product p1
-            JOIN (
-                SELECT ProductType, MIN(ProPrice) AS min_price
-                FROM product
-                WHERE Market=%s AND ExpireDate=%s AND Reason='合理' AND ProductType != %s
-                GROUP BY ProductType
-            ) p2 ON p1.ProductType=p2.ProductType AND p1.ProPrice=p2.min_price
+            SELECT *
+            FROM product
+            WHERE Market=%s 
+            AND ExpireDate <= %s
+            AND Reason='合理'
+            AND Status='未過期'
+            AND ProductType != %s
+            ORDER BY ExpireDate ASC, ProPrice ASC
+            LIMIT 6
         """
         cur.execute(query, (market, exp, ptype))
     else:
         query = """
-            SELECT * FROM product
-            WHERE Market=%s AND ExpireDate=%s AND ProductType=%s AND Reason='合理'
-            ORDER BY ProPrice ASC LIMIT 6
+            SELECT *
+            FROM product
+            WHERE Market=%s 
+            AND ExpireDate <= %s
+            AND ProductType=%s 
+            AND Reason='合理' 
+            AND Status='未過期'
+            ORDER BY ExpireDate DESC, ProPrice ASC
+            LIMIT 6
         """
         cur.execute(query, (market, exp, ptype))
 
     rows = cur.fetchall()
-    # ✅ 這裡先取得欄位描述
-    desc = cur.description
+    column_names = [desc[0] for desc in cur.description]
     cur.close()
 
-    if not desc:
-        return jsonify([]), 200  # 沒有資料就回空陣列避免 TypeError
+    products = []
+    for row in rows:
+        product = dict(zip(column_names, row))
+        # 將 ExpireDate 從 date 物件轉成 YYYY-MM-DD 字串
+        if isinstance(product.get('ExpireDate'), (datetime, date)):
+            product['ExpireDate'] = product['ExpireDate'].strftime("%Y-%m-%d")
+        products.append(product)
 
-    cols = [d[0] for d in desc]
-    result = [dict(zip(cols, row)) for row in rows]
-    return jsonify(result), 200
+    return jsonify(products), 200
+
+#---------------------啟動過期商品檢查----------------------
+def update_product_status_once():
+    """啟動時掃描所有商品的 ExpireDate，更新 Status 為 '已過期' 或 '未過期'"""
+    with app.app_context():
+        try:
+            print("⏰ 啟動時自動檢查商品過期狀態...")
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT ProductID, ExpireDate FROM product")
+            rows = cur.fetchall()
+
+            updated_count = 0
+            for pid, exp_str in rows:
+                if not exp_str:
+                    continue
+                try:
+                    exp = exp_str if isinstance(exp_str, date) else datetime.strptime(str(exp_str), "%Y-%m-%d").date()
+                    status = "未過期" if exp >= date.today() else "已過期"
+                    cur.execute("UPDATE product SET Status=%s WHERE ProductID=%s", (status, pid))
+                    updated_count += 1
+                except Exception as e:
+                    print(f"❌ 更新 ProductID={pid} 狀態失敗:", e)
+
+            mysql.connection.commit()
+            cur.close()
+            print(f"✅ 商品狀態更新完成，共 {updated_count} 筆")
+        except Exception as e:
+            print("❌ 自動更新狀態失敗:", e)
 
 
 # ---------------------- 啟動 ----------------------
 # 你的 auto_update_prices 函式定義在這裡
-if __name__ == '__main__':
+if __name__ == "__main__":
+    update_product_status_once()  # 本身就有 app context
 
-    # 啟動背景自動降價 Thread
-    '''thread = threading.Thread(target=auto_update_prices, args=(300,), daemon=True) #更新頻率
-    thread.start()'''
+    with app.app_context():  
+        try:
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate, Status, ProductType FROM product")
+            rows = cur.fetchall()
+            df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status','商品大類'])
+
+            # 呼叫 AI 預測價格，只回傳主要欄位 + Category
+            df = predict_price(df, update_db=False, mysql=mysql, show_features_only=True)
+
+            print("===== 資料庫資料跑模型結果 =====")
+            print(df.head(10))  # 前10筆方便查看
+
+            cur.close()
+        except Exception as e:
+            print("❌ 啟動時印出資料失敗:", e)
+            import traceback
+            print(traceback.format_exc())
 
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+
+
 

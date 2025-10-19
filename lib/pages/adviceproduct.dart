@@ -61,8 +61,8 @@ class _AdviceProductListState extends State<AdviceProductList> {
           children: [
             Text(
               widget.reason == "合理"
-                  ? "推薦同賣場、同到期日的其他合理商品"
-                  : "推薦同賣場、同到期日同類型的合理商品",
+                  ? "探索其他商品類別"
+                  : "推薦同類型高CP值商品",
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -71,7 +71,6 @@ class _AdviceProductListState extends State<AdviceProductList> {
             ),
             const SizedBox(height: 8),
 
-            // 若還在載入
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
             else if (_recommendations.isEmpty)
@@ -91,7 +90,7 @@ class _AdviceProductListState extends State<AdviceProductList> {
                   final name = item["ProName"] ?? "未命名商品";
                   final price = item["ProPrice"]?.toString() ?? "-";
                   final imagePath = item["ImagePath"] ?? "";
-                  final expireDate = item["ExpireDate"] ?? "";
+                  final expireDate = item["ExpireDate"] ?? "-"; 
 
                   return Card(
                     shape: RoundedRectangleBorder(
@@ -108,10 +107,33 @@ class _AdviceProductListState extends State<AdviceProductList> {
                             )
                           : const Icon(Icons.image_not_supported,
                               size: 50, color: Colors.grey),
-                      title: Text(name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 16)),
-                      subtitle: Text("即期價：\$${price}\n效期：$expireDate"),
+                      title: Text(
+                        name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            "即期價格：\$${price}",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "有效期限：$expireDate",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },

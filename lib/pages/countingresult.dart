@@ -336,8 +336,8 @@ class _CountingResultState extends State<CountingResult> {
                         if (reason != null)
                           Text(
                             reason == "合理"
-                                ? "✅ 目前價格落於合理範圍 ✅"
-                                : "‼ 目前價格不合理 ‼",
+                                ? "✅ 價格落於合理範圍，可購買 ✅"
+                                : "‼ 價格不合理，不建議購買 ‼",
                             style: TextStyle(
                               color: getReasonColor(reason),
                               fontSize: 18,

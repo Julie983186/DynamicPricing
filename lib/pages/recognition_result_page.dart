@@ -174,7 +174,10 @@ class RecognitionResultPage extends StatelessWidget {
                   await _deleteProductAndRescan(context, productId);
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                minimumSize: const Size(double.infinity, 50),
+              ),
               child: const Text('重新掃描', style: TextStyle(color: Colors.white)),
             ),
           ],

@@ -2,6 +2,7 @@ import pandas as pd
 import joblib
 import numpy as np
 import pytz
+import random
 
 # ----------------- 模型載入 -----------------
 try:
@@ -21,6 +22,13 @@ except Exception as e:
             print("🔍 FakeModel 輸出:", values)
             return values
     model = FakeModel()
+
+# ===== 在 prepare_features 開頭或 top of file 做欄位清理 helper =====
+def clean_column_names(df):
+    # 移除所有 whitespace（含全形、半形等）
+    df = df.copy()
+    df.columns = df.columns.str.replace(r'\s+', '', regex=True)
+    return df
 # ----------------- feature_cols 現在是全域變數 -----------------
 
 def prepare_features(df):
@@ -34,10 +42,10 @@ def prepare_features(df):
 
     df['原價'] = df['price']  # 原價欄位保留 price 的值
 
-    # 取得「本地」當下時間（指定時區為台北）
-    local_tz = 'Asia/Taipei'
+    # 取得「本地」當下時間（指定時區為台北） 
+    local_tz = 'Asia/Taipei' 
     now = pd.Timestamp.now(tz=local_tz)
-    
+
     # 修正後
     expire = pd.to_datetime(df.get('ExpireDate'), errors='coerce')
     expire = expire.dt.tz_localize('Asia/Taipei', ambiguous='NaT', nonexistent='NaT')
@@ -78,55 +86,104 @@ def prepare_features(df):
     print("🕒 剩餘時間檢查（台北時區）:")
     print(df[['ProName', 'ExpireDate', '剩餘保存期限_小時', '剩餘時間_可讀']])
 
+
+    # 模擬不同人流、天氣、停車狀況（使模型有變化）
+    df['人流量'] = [random.choice(['少', '一般', '多']) for _ in range(len(df))]
+    df['天氣'] = [random.choice(['晴天', '陰天', '雨天']) for _ in range(len(df))]
+    df['停車狀況'] = [random.choice(['少', '一般', '多']) for _ in range(len(df))]
+    df['當下溫度'] = np.random.randint(20, 33, size=len(df))  # 溫度 20~32 度
+    df['貨架上庫存量'] = np.random.randint(5, 20, size=len(df))  # 庫存 5~20 件
+
     
-    # 預設欄位
-    df['人流量'] = '一般'
-    df['天氣'] = '晴天'
-    df['停車狀況'] = '一般'
-    df['當下溫度'] = 25
-    df['貨架上庫存量'] = 10
-    
-    # 商品大類
-    if '商品大類' not in df.columns and 'ProductType' in df.columns:
-        df['商品大類'] = df['ProductType']
-    elif '商品大類' not in df.columns:
-        df['商品大類'] = '其他'
+    # --- ProductType 若不存在要嘗試使用 ProductType 欄或預設 '其他' ---
+    if '商品大類' not in df.columns:
+        if 'ProductType' in df.columns:
+            df['商品大類'] = df['ProductType']
+        else:
+            # 若 DB 沒有 ProductType，請改 SQL 把它抓回來（下方示例會說明）
+            df['商品大類'] = '其他'
     
     # one-hot encode
-    df = pd.get_dummies(df, columns=['人流量','天氣','停車狀況','商品大類'])
+    df = pd.get_dummies(df, columns=['人流量','天氣','停車狀況','商品大類'], dtype=int)
     
     # 統一欄位名稱格式（移除空格）
-    df.columns = df.columns.str.replace(' ', '')
+    #df.columns = df.columns.str.replace(' ', '')
+    # 再次清理欄位名稱（避免 dummies 產生空格）
+    df.columns = df.columns.str.replace(r'\s+', '', regex=True)
 
     # 補上模型要求的欄位
     for col in feature_cols:
         if col not in df.columns:
             df[col] = 0
+
+    # 最後：確保所有輸入數值型別正確（把 bool -> int）
+    df = df.copy()
+    for c in df.columns:
+        if df[c].dtype == 'bool':
+            df[c] = df[c].astype(int)
             
     return df
 
+#這裡有些不一樣
+def predict_price(df, update_db=True, mysql=None):
+    print("📌 price 與 ProPrice 對照檢查：")
+    print(df[['ProductID','ProName','price','ProPrice']])
 
-def predict_price(df, update_db=True, mysql=None, show_features_only=True):
+    """
+    df: pandas DataFrame, 至少需包含 ProPrice
+    update_db: 是否直接更新 MySQL product 表的 AiPrice 與 Reason
+    mysql: 若 update_db=True，需傳入 mysql 連線物件
+    """
     df = df.copy()
 
-    # 計算特徵欄位（包含 one-hot 類別）
+    # 先用 prepare_features 計算欄位、剩餘時間、one-hot 等
     df_full = prepare_features(df)
 
-    # 🔍 檢查 one-hot
-    category_cols = [c for c in df_full.columns if c.startswith("商品大類_")]
-    print("🔍 商品大類 one-hot 欄位 head：")
-    print(df_full[category_cols].head())
-
-    # 模型輸入
+    # ⚡ 只取模型訓練過的欄位
     X = df_full[feature_cols]
+    #X = prepare_features(df)
+
+    # debug start
+    print("🔍 model type:", type(model))
+    try:
+        print("🔍 model.feature_names_in_ length:", len(model.feature_names_in_))
+    except Exception:
+        print("🔍 model has no feature_names_in_")
+
+    print("==== DEBUG X summary ====")
+    print("🧾 X shape:", X.shape)
+    print("nonzero counts:\n", (X != 0).sum().sort_values(ascending=False).head(30))
+    if '剩餘保存期限_小時' in X.columns:
+        print("剩餘保存期限 describe:\n", X['剩餘保存期限_小時'].describe())
+    print("missing features:", [c for c in feature_cols if c not in X.columns])
+    # 各特徵非零數量（看哪些 one-hot 實際有值）
+    nz = (X != 0).sum().sort_values(ascending=False)
+    print("🧩 非零欄位計數 (top 20):")
+    print(nz.head(20).to_string())
+
+    # 查看剩餘時間分布（最關鍵）
+    if '剩餘保存期限_小時' in X.columns:
+        print("⏱ 剩餘保存期限_小時 describe:")
+        print(X['剩餘保存期限_小時'].describe())
+        print("⏱ 剩餘保存期限_小時 unique count:", X['剩餘保存期限_小時'].nunique())
+    # debug end
+
+
+    print("🧩 輸入給模型的欄位：", list(X.columns))
+    print("📊 前幾筆輸入數據：")
+    print(X.head())
 
     # AI 折扣
     df['AI折扣'] = model.predict(X).round(2)
-
+    
     # 確保數值型別正確
     df['ProPrice'] = pd.to_numeric(df['ProPrice'], errors='coerce').fillna(0).astype(float)
     df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0).astype(float)
     df['AiPrice'] = (df['price'] * (1 - df['AI折扣'])).round(0).astype(float)
+
+    df['差異'] = df['AiPrice'] - df['ProPrice']
+    print("🛠 AiPrice 與 ProPrice 差異檢查：")
+    print(df[['ProductID','ProName','AiPrice','ProPrice','差異', 'AI折扣']])
 
     # 判斷合理性（允許誤差 ±1）
     df['Reason'] = df.apply(
@@ -134,20 +191,6 @@ def predict_price(df, update_db=True, mysql=None, show_features_only=True):
         else "不合理",
         axis=1
     )
-
-    # 將商品大類 one-hot 轉成單一欄位 Category
-    category_cols = [c for c in df_full.columns if c.startswith("商品大類_")]
-    df_full[category_cols] = df_full[category_cols].astype(bool)
-
-    def one_hot_to_category(row):
-        for c in category_cols:
-            if row[c]:
-                return c.replace("商品大類_", "")
-        return "其他"
-
-    # ⚡ 注意 axis=1
-    df['Category'] = df_full.apply(one_hot_to_category, axis=1)
-
 
 
     # 若需要直接更新資料庫
@@ -163,75 +206,96 @@ def predict_price(df, update_db=True, mysql=None, show_features_only=True):
             cur.close()
         except Exception as e:
             print("❌ 更新 AiPrice 失敗:", e)
+    
+    return df[['ProductID','ProName','ProPrice','AI折扣','AiPrice','Reason']]
 
-    # 回傳只包含主要欄位 + Category
-    df_final = df[['ProductID','ProName','Category','ProPrice','AI折扣','AiPrice','Reason']]
-
-    # 若 show_features_only，打印前 10 筆
-    if show_features_only:
-        print(df_final.head(10))
-
-    return df_final
-
-
-
-
-
-'''
 # === ✅ 測試區 ===
-if __name__ == "__main__":
-    test_df = pd.DataFrame([
-        {
-            'ProductID': 1,
-            'ProName': '雞三節翅',
-            'price': 120,
-            'ProPrice': 90,
-            'ExpireDate': '2025-10-20 19:00',
-            'ProductType': '肉類'
-        },
-        {
-            'ProductID': 2,
-            'ProName': '鮭魚',
-            'price': 200,
-            'ProPrice': 180,
-            'ExpireDate': '2025-10-19 23:59',
-            'ProductType': '魚類'
-        },
-        {
-            'ProductID': 3,
-            'ProName': '雞三節翅',
-            'price': 120,
-            'ProPrice': 90,
-            'ExpireDate': '2025-10-19 07:00',
-            'ProductType': '肉類'
-        },
-        {
-            'ProductID': 4,
-            'ProName': '鮭魚',
-            'price': 200,
-            'ProPrice': 180,
-            'ExpireDate': '2025-10-20 00:00:00',
-            'ProductType': '魚類'
-        },
-        {
-            'ProductID': 5,
-            'ProName': '水果',
-            'price': 200,
-            'ProPrice': 180,
-            'ExpireDate': '2025-10-19 00:00:00',
-            'ProductType': '蔬果類'
-        },
-        {
-            'ProductID': 6,
-            'ProName': '水果',
-            'price': 200,
-            'ProPrice': 180,
-            'ExpireDate': '2025-10-20 00:14:00',
-            'ProductType': '蔬果類'
-        }
-    ])
+# if __name__ == "__main__":
+#     test_df = pd.DataFrame([
+#         {
+#             'ProductID': 1,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-20 20:00:00 GMT',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 2,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-19 23:00:00 GMT',
+#             'ProductType': '魚類'
+#         },
+#         {
+#             'ProductID': 3,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-19 00:00:00 GMT',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 4,
+#             'ProName': '鮭魚',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-21 00:00:00 GMT',
+#             'ProductType': '魚類'
+#         }
+#         ,
+#         {
+#             'ProductID': 5,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-20 19:00:00 GMT',
+#             'ProductType': '蔬果類'
+#         }
+#         ,
+#         {
+#             'ProductID': 6,
+#             'ProName': '水果',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-20 14:00:00 GMT',
+#             'ProductType': '蔬果類'
+#         },
+#         {
+#             'ProductID': 7,
+#             'ProName': '吐司',
+#             'price': 200,
+#             'ProPrice': 180,
+#             'ExpireDate': '2025-10-21 14:00:00 GMT',
+#             'ProductType': '麵包甜點類'
+#         },
+#         {
+#             'ProductID': 8,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-20 9:00:00 GMT',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 9,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-20 12:00:00 GMT',
+#             'ProductType': '肉類'
+#         },
+#         {
+#             'ProductID': 10,
+#             'ProName': '雞三節翅',
+#             'price': 120,
+#             'ProPrice': 90,
+#             'ExpireDate': '2025-10-20 20:00:00 GMT',
+#             'ProductType': '肉類'
+#         }
+#     ])
 
-    result = predict_price(test_df, update_db=False)
-    print("模型特徵欄位:", feature_cols)
-    print(result)
-'''
+#     result = predict_price(test_df, update_db=False)
+#     print("模型特徵欄位:", feature_cols)
+#     print(result)

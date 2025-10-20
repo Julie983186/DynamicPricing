@@ -73,7 +73,7 @@ def extract_prices(texts):
 
 
 def extract_product_info(texts):
-    info = {"ProName": None, "ExpireDate": None, "price": None, "ProPrice": None}
+    info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
     max_length = 0  # 用來記錄目前抓到的最長名稱
     full_text = "\n".join(texts)
 
@@ -92,7 +92,7 @@ def extract_product_info(texts):
 
     # 原價 / 即期價
     price, pro_price = extract_prices(texts)
-    info["price"] = price
+    info["Price"] = price
     info["ProPrice"] = pro_price
 
     return info
@@ -180,13 +180,13 @@ def ocr_api():
     try:
         cur = mysql.connection.cursor()
         sql = """
-            INSERT INTO product (ProName, ExpireDate, price, ProPrice, Market, Status, ProductType, ImagePath)
+            INSERT INTO product (ProName, ExpireDate, Price, ProPrice, Market, Status, ProductType, ImagePath)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         cur.execute(sql, (
             info["ProName"],
             expire_date,
-            info["price"],
+            info["Price"],
             info["ProPrice"],
             market,
             status,
@@ -234,9 +234,9 @@ def predict_price_api():
     try:
         cur = mysql.connection.cursor()
         # 多抓 Status 欄位
-        cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate, Status FROM product")
+        cur.execute("SELECT ProductID, ProName, ProPrice, Price, ExpireDate, Status, ProductType FROM product")
         rows = cur.fetchall()
-        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status'])
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','Price','ExpireDate','Status'])
         
         # 🧹 過濾掉已過期商品
         before = len(df)
@@ -297,7 +297,7 @@ def predict_price_api():
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
     data = request.get_json()
-    fields = {k: v for k, v in data.items() if k in ["ProName", "ExpireDate", "price", "ProPrice", "Market", "Status", "ProductType", "ImagePath"]}
+    fields = {k: v for k, v in data.items() if k in ["ProName", "ExpireDate", "Price", "ProPrice", "Market", "Status", "ProductType", "ImagePath"]}
 
     # 如果有更新日期 → 重新計算 Status
     if "ExpireDate" in fields:
@@ -638,28 +638,8 @@ def update_product_status_once():
 
 
 # ---------------------- 啟動 ----------------------
-# 你的 auto_update_prices 函式定義在這裡
 if __name__ == "__main__":
-    update_product_status_once()  # 本身就有 app context
-
-    with app.app_context():  
-        try:
-            cur = mysql.connection.cursor()
-            cur.execute("SELECT ProductID, ProName, ProPrice, price, ExpireDate, Status, ProductType FROM product")
-            rows = cur.fetchall()
-            df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status','商品大類'])
-
-            # 呼叫 AI 預測價格，只回傳主要欄位 + Category
-            df = predict_price(df, update_db=False, mysql=mysql, show_features_only=True)
-
-            print("===== 資料庫資料跑模型結果 =====")
-            print(df.head(10))  # 前10筆方便查看
-
-            cur.close()
-        except Exception as e:
-            print("❌ 啟動時印出資料失敗:", e)
-            import traceback
-            print(traceback.format_exc())
+    update_product_status_once() 
 
     app.run(host='0.0.0.0', port=5000, debug=True)
 

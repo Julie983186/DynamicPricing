@@ -236,8 +236,7 @@ def predict_price_api():
         # 多抓 Status 欄位
         cur.execute("SELECT ProductID, ProName, ProPrice, Price, ExpireDate, Status, ProductType FROM product")
         rows = cur.fetchall()
-        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','Price','ExpireDate','Status'])
-        
+        df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status','商品大類'])        
         # 🧹 過濾掉已過期商品
         before = len(df)
         df = df[df['Status'] != '已過期']

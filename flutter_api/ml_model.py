@@ -210,92 +210,94 @@ def predict_price(df, update_db=True, mysql=None):
     return df[['ProductID','ProName','ProPrice','AI折扣','AiPrice','Reason']]
 
 # === ✅ 測試區 ===
-# if __name__ == "__main__":
-#     test_df = pd.DataFrame([
-#         {
-#             'ProductID': 1,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-20 20:00:00 GMT',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 2,
-#             'ProName': '鮭魚',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-19 23:00:00 GMT',
-#             'ProductType': '魚類'
-#         },
-#         {
-#             'ProductID': 3,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-19 00:00:00 GMT',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 4,
-#             'ProName': '鮭魚',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-21 00:00:00 GMT',
-#             'ProductType': '魚類'
-#         }
-#         ,
-#         {
-#             'ProductID': 5,
-#             'ProName': '水果',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-20 19:00:00 GMT',
-#             'ProductType': '蔬果類'
-#         }
-#         ,
-#         {
-#             'ProductID': 6,
-#             'ProName': '水果',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-20 14:00:00 GMT',
-#             'ProductType': '蔬果類'
-#         },
-#         {
-#             'ProductID': 7,
-#             'ProName': '吐司',
-#             'price': 200,
-#             'ProPrice': 180,
-#             'ExpireDate': '2025-10-21 14:00:00 GMT',
-#             'ProductType': '麵包甜點類'
-#         },
-#         {
-#             'ProductID': 8,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-20 9:00:00 GMT',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 9,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-20 12:00:00 GMT',
-#             'ProductType': '肉類'
-#         },
-#         {
-#             'ProductID': 10,
-#             'ProName': '雞三節翅',
-#             'price': 120,
-#             'ProPrice': 90,
-#             'ExpireDate': '2025-10-20 20:00:00 GMT',
-#             'ProductType': '肉類'
-#         }
-#     ])
+'''
+if __name__ == "__main__":
+    test_df = pd.DataFrame([
+        {
+            'ProductID': 1,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-23 20:00:00 GMT',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 2,
+            'ProName': '鮭魚',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-23 23:00:00 GMT',
+            'ProductType': '魚類'
+        },
+        {
+            'ProductID': 3,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-24 00:00:00 GMT',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 4,
+            'ProName': '鮭魚',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-24 00:00:00 GMT',
+            'ProductType': '魚類'
+        }
+        ,
+        {
+            'ProductID': 5,
+            'ProName': '水果',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-24 19:00:00 GMT',
+            'ProductType': '蔬果類'
+        }
+        ,
+        {
+            'ProductID': 6,
+            'ProName': '水果',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-24 14:00:00 GMT',
+            'ProductType': '蔬果類'
+        },
+        {
+            'ProductID': 7,
+            'ProName': '吐司',
+            'price': 200,
+            'ProPrice': 180,
+            'ExpireDate': '2025-10-24 14:00:00 GMT',
+            'ProductType': '麵包甜點類'
+        },
+        {
+            'ProductID': 8,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-24 9:00:00 GMT',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 9,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-24 12:00:00 GMT',
+            'ProductType': '肉類'
+        },
+        {
+            'ProductID': 10,
+            'ProName': '雞三節翅',
+            'price': 120,
+            'ProPrice': 90,
+            'ExpireDate': '2025-10-24 20:00:00 GMT',
+            'ProductType': '肉類'
+        }
+    ])
 
-#     result = predict_price(test_df, update_db=False)
-#     print("模型特徵欄位:", feature_cols)
-#     print(result)
+    result = predict_price(test_df, update_db=False)
+    print("模型特徵欄位:", feature_cols)
+    print(result)
+'''

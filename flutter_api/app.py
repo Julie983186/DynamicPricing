@@ -41,36 +41,30 @@ READY_TO_EAT_KEYWORDS = ["三明治", "便當", "沙拉", "餃子皮", "火鍋�
 
 
 # -------- 工具函數 --------
-def extract_prices(texts):
-    """抽取原價與即期價，支援 $ 與 元 的標籤"""
-    discount_candidates = []  # $ → 折扣
-    normal_candidates = []    # 元 → 原價/折扣
+def extract_prices_yuan_only(texts):
+
+    yuan_candidates = []  # 儲存所有以 '元' 結尾的價格
 
     for line in texts:
-        # $ 開頭
-        matches_dollar = re.findall(r"\$\s*(\d+)", line)
-        for m in matches_dollar:
-            discount_candidates.append(int(m))
-
         # "元" 結尾
+        # 使用正規表達式 r"(\d+)\s*元" 捕捉數字部分
         matches_yuan = re.findall(r"(\d+)\s*元", line)
         for m in matches_yuan:
-            normal_candidates.append(int(m))
+            # 將提取到的數字轉換為整數
+            yuan_candidates.append(int(m))
 
     price, pro_price = None, None
-    if discount_candidates:  
-        # 有 $ → 視為折扣價 (最低)，元價取最大當原價
-        pro_price = min(discount_candidates)
-        if normal_candidates:
-            price = max(normal_candidates)
-    else:
-        # 沒有 $ → 用 元 最大 = 原價，最小 = 折扣
-        if normal_candidates:
-            price = max(normal_candidates)
-            pro_price = min(normal_candidates)
+
+    if yuan_candidates:
+        # 有找到 '元' 結尾的價格
+        
+        # 最大的數字視為原價
+        price = max(yuan_candidates)
+        
+        # 最小的數字視為即期價
+        pro_price = min(yuan_candidates)
 
     return price, pro_price
-
 
 def extract_product_info(texts):
     info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
@@ -638,7 +632,9 @@ def update_product_status_once():
 
 # ---------------------- 啟動 ----------------------
 if __name__ == "__main__":
-    update_product_status_once() 
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        update_product_status_once()
+
 
     app.run(host='0.0.0.0', port=5000, debug=True)
 

@@ -42,34 +42,23 @@ READY_TO_EAT_KEYWORDS = ["三明治", "便當", "沙拉", "餃子皮", "火鍋�
 
 # -------- 工具函數 --------
 def extract_prices(texts):
-    """抽取原價與即期價，支援 $ 與 元 的標籤"""
-    discount_candidates = []  # $ → 折扣
-    normal_candidates = []    # 元 → 原價/折扣
+    """僅抽取 '元' 的價格：最大=原價，最小=即期價"""
+    normal_candidates = []  # 僅記錄 '元' 的價格
 
     for line in texts:
-        # $ 開頭
-        matches_dollar = re.findall(r"\$\s*(\d+)", line)
-        for m in matches_dollar:
-            discount_candidates.append(int(m))
-
-        # "元" 結尾
+        # "數字 + 元"
         matches_yuan = re.findall(r"(\d+)\s*元", line)
         for m in matches_yuan:
             normal_candidates.append(int(m))
 
     price, pro_price = None, None
-    if discount_candidates:  
-        # 有 $ → 視為折扣價 (最低)，元價取最大當原價
-        pro_price = min(discount_candidates)
-        if normal_candidates:
-            price = max(normal_candidates)
-    else:
-        # 沒有 $ → 用 元 最大 = 原價，最小 = 折扣
-        if normal_candidates:
-            price = max(normal_candidates)
-            pro_price = min(normal_candidates)
+
+    if normal_candidates:
+        price = max(normal_candidates)      # 原價
+        pro_price = min(normal_candidates)  # 即期價
 
     return price, pro_price
+
 
 
 def extract_product_info(texts):

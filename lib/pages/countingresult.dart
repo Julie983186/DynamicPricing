@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'adviceproduct.dart';
 import '../services/route_logger.dart';
-import 'register_login_page.dart';
+import 'guest_login_page.dart';   // ⭐ 新增的登入頁
 import 'member_profile_page.dart';
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
@@ -13,7 +13,7 @@ class CountingResult extends StatefulWidget {
   final String? token;
   final String? imagePath;
   final Map<String, dynamic>? productInfo;
-  final bool autoUpdateAIPrice; // 新增：是否自動更新 AI 價格
+  final bool autoUpdateAIPrice;
 
   const CountingResult({
     super.key,
@@ -32,6 +32,7 @@ class CountingResult extends StatefulWidget {
 class _CountingResultState extends State<CountingResult> {
   static const Color _standardBackground = Color(0xFFE8F5E9);
   bool _hasShownGuestDialog = false;
+
   double? AiPrice;
   int? productId;
   String? reason;
@@ -41,7 +42,6 @@ class _CountingResultState extends State<CountingResult> {
     super.initState();
     saveCurrentRoute('/countingResult');
 
-    // 解析 productInfo
     final info = widget.productInfo ?? {};
     productId = info["ProductID"];
     reason = info["Reason"];
@@ -49,7 +49,6 @@ class _CountingResultState extends State<CountingResult> {
         ? double.tryParse(info["AiPrice"].toString())
         : null;
 
-    // ⚡ 若設定 autoUpdateAIPrice，則再抓最新價格
     if (widget.autoUpdateAIPrice && productId != null) {
       _fetchAIPrice();
     }
@@ -57,27 +56,27 @@ class _CountingResultState extends State<CountingResult> {
 
   bool _isGuest() => widget.userId == null || widget.token == null;
 
-  Future<void> _saveScanRecord() async {
-    debugPrint('掃描紀錄已儲存（範例）');
-  }
-
   Future<void> _discardScanRecord() async {
-    debugPrint('掃描紀錄已捨棄（範例）');
+    // 留空即可
   }
 
+  /// -------------------------------------------------------------------
+  /// ⭐ 訪客按「再次掃描」時出現提示：保留 or 不保留
+  /// -------------------------------------------------------------------
   void _showGuestDialog() {
     if (_hasShownGuestDialog) return;
     _hasShownGuestDialog = true;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (_) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text(
-              "您目前是訪客身分，要不要保留這筆掃描紀錄？若保留請註冊登入會員"),
+          content: const Text("您目前是訪客，要不要保留這筆掃描紀錄？若要保留需要先登入"),
           actions: [
             TextButton(
+              child: const Text("不保留"),
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _discardScanRecord();
@@ -85,61 +84,55 @@ class _CountingResultState extends State<CountingResult> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ScanningPicturePage(
-                        userId: widget.userId,
-                        userName: widget.userName,
-                        token: widget.token,
+                      builder: (_) => const ScanningPicturePage(),
+                    ),
+                  );
+                }
+              },
+            ),
+
+            /// ⭐ 保留 → 跳「訪客專用登入頁」
+            ElevatedButton(
+              child: const Text("保留"),
+              onPressed: () async {
+                Navigator.of(context).pop();
+
+                if (productId != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => GuestLoginPage(
+                        productId: productId!, // 傳去綁定紀錄
                       ),
                     ),
                   );
                 }
               },
-              child: const Text("不保留"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final result = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
-                );
-                if (result == true) {
-                  await _saveScanRecord();
-                }
-              },
-              child: const Text("保留"),
             ),
           ],
         );
       },
-    ).then((_) {
-      _hasShownGuestDialog = false;
-    });
+    ).then((_) => _hasShownGuestDialog = false);
   }
 
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
+      builder: (_) {
         return AlertDialog(
           title: const Text("需要登入"),
-          content: const Text("請先登入或註冊以使用會員功能"),
+          content: const Text("請先登入會員以使用此功能"),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
               child: const Text("取消"),
+              onPressed: () => Navigator.pop(context),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterLoginPage()),
-                );
-              },
               child: const Text("登入/註冊"),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/login');
+              },
             ),
           ],
         );
@@ -147,7 +140,6 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-  /// -------------------------- 抓 AI 價格 --------------------------
   Future<void> _fetchAIPrice() async {
     if (productId == null) return;
     final value = await fetchAIPrice(productId!);
@@ -164,7 +156,9 @@ class _CountingResultState extends State<CountingResult> {
     return Colors.black;
   }
 
-  /// -------------------------- Build --------------------------
+  /// -------------------------------------------------------------------
+  /// ⭐ UI
+  /// -------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final info = widget.productInfo ?? {};
@@ -178,107 +172,99 @@ class _CountingResultState extends State<CountingResult> {
       body: SafeArea(
         child: Stack(
           children: [
+            //----------------------------------------------------
+            // 上方商品資訊
+            //----------------------------------------------------
             SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 250),
               child: Column(
                 children: [
                   const SizedBox(height: 20),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // 左上角會員 / 訪客 icon
-                        Material(
-                          color: Colors.transparent,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(50),
-                            onTap: () {
-                              if (_isGuest()) {
-                                _showLoginRequiredDialog();
-                              } else {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/member_profile',
-                                  arguments: {
-                                    'userId': widget.userId!,
-                                    'userName': widget.userName!,
-                                    'token': widget.token!,
-                                  },
-                                );
-                              }
-                            },
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 35,
-                                  height: 35,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF388E3C)
-                                        .withOpacity(0.5),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.account_circle,
-                                      color: Colors.white, size: 25),
+                        // ------------------ 左側會員圖示 ------------------
+                        InkWell(
+                          onTap: () {
+                            if (_isGuest()) {
+                              _showLoginRequiredDialog();
+                            } else {
+                              Navigator.pushNamed(
+                                context,
+                                '/member_profile',
+                                arguments: {
+                                  'userId': widget.userId,
+                                  'userName': widget.userName,
+                                  'token': widget.token,
+                                },
+                              );
+                            }
+                          },
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 35,
+                                height: 35,
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFF388E3C).withOpacity(0.5),
+                                  shape: BoxShape.circle,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _isGuest()
-                                      ? "訪客"
-                                      : (widget.userName ?? "會員"),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF388E3C),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                child: const Icon(Icons.account_circle,
+                                    color: Colors.white, size: 25),
+                              ),
+                              Text(
+                                _isGuest()
+                                    ? "訪客"
+                                    : (widget.userName ?? "會員"),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF388E3C),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        // 中間 LOGO
-                        Image.asset(
-                          'assets/logo.png',
-                          height: 90,
-                          fit: BoxFit.contain,
-                        ),
-                        // 右上角再次掃描 icon
-                        Material(
-                          color: Colors.transparent,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(50),
-                            onTap: () {
-                              if (_isGuest()) {
-                                _showGuestDialog();
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ScanningPicturePage(
-                                      userId: widget.userId,
-                                      userName: widget.userName,
-                                      token: widget.token,
-                                    ),
+
+                        // ------------------ LOGO ------------------
+                        Image.asset('assets/logo.png',
+                            height: 90, fit: BoxFit.contain),
+
+                        // ------------------ 再次掃描 ------------------
+                        InkWell(
+                          onTap: () {
+                            if (_isGuest()) {
+                              _showGuestDialog();
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScanningPicturePage(
+                                    userId: widget.userId,
+                                    userName: widget.userName,
+                                    token: widget.token,
                                   ),
-                                );
-                              }
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Icon(Icons.fullscreen,
-                                  size: 30,
-                                  color: Color.fromARGB(221, 38, 92, 31)),
-                            ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Icon(
+                            Icons.fullscreen,
+                            size: 30,
+                            color: Color.fromARGB(221, 38, 92, 31),
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
+                  //----------------------------------------------------
                   // 商品卡片
+                  //----------------------------------------------------
                   Container(
                     width: 330,
                     padding: const EdgeInsets.all(16),
@@ -292,17 +278,12 @@ class _CountingResultState extends State<CountingResult> {
                           Container(
                             width: 220,
                             height: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: Colors.white,
-                            ),
                             child: Image.file(
                               File(widget.imagePath!),
                               fit: BoxFit.contain,
                             ),
-                          )
-                        else
-                          const SizedBox(height: 200),
+                          ),
+
                         const SizedBox(height: 12),
                         Text("商品名稱：$name",
                             style: const TextStyle(
@@ -318,26 +299,29 @@ class _CountingResultState extends State<CountingResult> {
                             style: const TextStyle(
                                 fontSize: 16, color: Colors.red)),
                         const SizedBox(height: 16),
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             buildPriceBox("即期價格", "\$$proPrice",
                                 isDiscount: false),
                             buildPriceBox(
-                                "AI定價",
-                                AiPrice != null
-                                    ? "\$${AiPrice!.toInt()}"
-                                    : "計算中...",
-                                isDiscount: true),
+                              "AI定價",
+                              AiPrice != null
+                                  ? "\$${AiPrice!.toInt()}"
+                                  : "計算中…",
+                              isDiscount: true,
+                            ),
                           ],
                         ),
+
                         const SizedBox(height: 12),
 
                         if (reason != null)
                           Text(
                             reason == "合理"
-                                ? "✅ 價格落於合理範圍，可購買 ✅"
-                                : "‼ 價格不合理，不建議購買 ‼",
+                                ? "✅ 價格落於合理範圍"
+                                : "❗ 價格不合理，建議勿購買",
                             style: TextStyle(
                               color: getReasonColor(reason),
                               fontSize: 18,
@@ -347,16 +331,19 @@ class _CountingResultState extends State<CountingResult> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 100),
                 ],
               ),
             ),
 
-            // 推薦商品區塊
+            //----------------------------------------------------
+            // 推薦商品
+            //----------------------------------------------------
             DraggableScrollableSheet(
               initialChildSize: 0.25,
-              minChildSize: 0.15,
               maxChildSize: 0.85,
+              minChildSize: 0.15,
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
@@ -385,7 +372,8 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
+  Widget buildPriceBox(String title, String price,
+      {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(
@@ -399,9 +387,8 @@ class _CountingResultState extends State<CountingResult> {
             Text(
               title,
               style: TextStyle(
-                fontSize: isDiscount ? 16 : 18,
-                fontWeight: FontWeight.w600,
-              ),
+                  fontSize: isDiscount ? 16 : 18,
+                  fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Text(

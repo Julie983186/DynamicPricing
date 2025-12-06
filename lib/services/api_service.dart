@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart'; // kIsWeb
 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
-  static const String baseUrl = 'http://172.20.10.2:5000'; 
+  static const String baseUrl = 'http://192.168.0.129:5000'; 
 }
 /// ------------------ 註冊 ------------------
 Future<bool> registerUser(String name, String phone, String email, String password) async {
@@ -220,6 +220,34 @@ Future<List<dynamic>> fetchHistoryProducts(
     return [];
   }
 }
+
+/// ------------------ 儲存訪客歷史紀錄 ------------------
+Future<bool> saveGuestHistory(int productId, String token) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/save_guest_history');
+
+  try {
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // 登入後才會有 token
+      },
+      body: jsonEncode({'productID': productId}),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('歷史紀錄儲存成功');
+      return true;
+    } else {
+      debugPrint('歷史紀錄儲存失敗: ${response.body}');
+      return false;
+    }
+  } catch (e) {
+    debugPrint('連線錯誤: $e');
+    return false;
+  }
+}
+
 /// ------------------ 抓取單筆商品 AI 價格 ------------------
 Future<double?> fetchAIPrice(int productId) async {
   try {

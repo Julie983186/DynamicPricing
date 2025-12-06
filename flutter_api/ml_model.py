@@ -42,33 +42,50 @@ def prepare_features(df):
 
     df['原價'] = df['price']  # 原價欄位保留 price 的值
 
-    # 取得「本地」當下時間（指定時區為台北） 
-    local_tz = 'Asia/Taipei' 
-    now = pd.Timestamp.now(tz=local_tz)
+    # ----------------- ExpireDate 處理（台北時區 -> UTC） -----------------
+    local_tz = 'Asia/Taipei'
 
-    # 修正後
+    # 取得當下時間（UTC）
+    now_utc = pd.Timestamp.now(tz='UTC')
+
+    # 先解析日期（可能 tz-naive）
     expire = pd.to_datetime(df.get('ExpireDate'), errors='coerce')
-    expire = expire.dt.tz_localize('Asia/Taipei', ambiguous='NaT', nonexistent='NaT')
-    
-    # fallback：若無法解析，嘗試視為本地時間
+
+    # 整日 00:00:00 → 23:59:59
+    expire = expire.apply(
+        lambda x: x + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        if pd.notna(x) and x.hour == 0 and x.minute == 0 and x.second == 0
+        else x
+    )
+
+    # 安全 localize：tz-naive → 台北時間；tz-aware → 轉台北時間
+    def localize_to_taipei(ts):
+        if pd.isna(ts):
+            return pd.NaT
+        try:
+            if ts.tzinfo is None:
+                return ts.tz_localize(local_tz, ambiguous='NaT', nonexistent='NaT')
+            return ts.tz_convert(local_tz)
+        except Exception:
+            return pd.NaT
+
+    expire = expire.apply(localize_to_taipei)
+
+    # fallback：若仍有 NaT，直接用 tz_localize
     mask_nat = expire.isna()
     if mask_nat.any():
         fallback = pd.to_datetime(df.loc[mask_nat, 'ExpireDate'], errors='coerce')
         fallback = fallback.dt.tz_localize(local_tz, ambiguous='NaT', nonexistent='NaT')
-        expire.loc[mask_nat] = fallback
+        expire = expire.combine_first(fallback)
 
-    # 🕓 若時間為「整日」（例如 2025-10-18 00:00:00），視為當日 23:59:59
-    expire = expire.apply(
-        lambda x: x + pd.Timedelta(hours=23, minutes=59, seconds=59)
-        if (not pd.isna(x) and x.hour == 0 and x.minute == 0 and x.second == 0)
-        else x
-    )
+    # 統一轉成 UTC
+    expire = expire.dt.tz_convert('UTC')
 
-    # 計算剩餘時間（小時）
-    delta_hours = (expire - now).dt.total_seconds().div(3600)
+    # 計算剩餘小時
+    delta_hours = (expire - now_utc).dt.total_seconds() / 3600
     df['剩餘保存期限_小時'] = delta_hours.clip(lower=0).fillna(0)
 
-    # 轉成可讀格式
+    # 可讀格式
     def format_remaining_time(expire_ts, now_ts):
         if pd.isna(expire_ts):
             return "未知"
@@ -80,11 +97,12 @@ def prepare_features(df):
         minutes, seconds = divmod(remainder, 60)
         return f"{days}天 {hours}小時 {minutes}分 {seconds}秒"
 
-    df['剩餘時間_可讀'] = expire.apply(lambda x: format_remaining_time(x, now))
+    df['剩餘時間_可讀'] = expire.apply(lambda x: format_remaining_time(x, now_utc))
 
-    # ✅ debug 印出確認
     print("🕒 剩餘時間檢查（台北時區）:")
     print(df[['ProName', 'ExpireDate', '剩餘保存期限_小時', '剩餘時間_可讀']])
+
+
 
 
     # 模擬不同人流、天氣、停車狀況（使模型有變化）

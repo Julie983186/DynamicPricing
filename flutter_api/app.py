@@ -28,9 +28,14 @@ app.config['MYSQL_DB'] = db_config['database']
 app.config['JWT_SECRET_KEY'] = 'TanJiDynamicPricing2025finalproject'
 jwt = JWTManager(app)
 
-mysql = MySQL(app)
-ocr = PaddleOCR()
 
+mysql = MySQL(app)
+# app.py 修改後的程式碼
+ocr = PaddleOCR(lang='ch', use_textline_orientation=False, ocr_version='PP-OCRv4')
+
+
+from opencc import OpenCC
+cc = OpenCC('s2t')
 # 關鍵字分類
 MEAT_KEYWORDS = ["豬", "牛", "雞", "羊", "腿", "排", "骨", "燒烤片", "火烤片", "肉片", "火鍋片", "絞肉"]
 SEAFOOD_KEYWORDS = ["魚", "蝦", "魷", "鮭", "花枝", "章魚", "鯛", "干貝", "蛤", "牡蠣", "螺", "白管", "海帶"]
@@ -42,6 +47,7 @@ READY_TO_EAT_KEYWORDS = ["三明治", "便當", "沙拉", "餃子皮", "火鍋�
 
 # -------- 工具函數 --------
 def extract_prices(texts):
+<<<<<<< HEAD
     """僅抽取 '元' 的價格：最大=原價，最小=即期價"""
     normal_candidates = []  # 僅記錄 '元' 的價格
 
@@ -56,6 +62,22 @@ def extract_prices(texts):
     if normal_candidates:
         price = max(normal_candidates)      # 原價
         pro_price = min(normal_candidates)  # 即期價
+=======
+    normal_candidates = []
+
+    for line in texts:
+        # 只抓純「數字 + 元」
+        matches = re.findall(r"(\d+(?:\.\d+)?)\s*元", line)
+
+        for m in matches:
+            if "元/" in line:
+                continue
+
+            normal_candidates.append(int(float(m)))
+
+    price = max(normal_candidates) if normal_candidates else None
+    pro_price = min(normal_candidates) if normal_candidates else None
+>>>>>>> origin/main
 
     return price, pro_price
 
@@ -149,8 +171,6 @@ def ocr_api():
         texts.extend(item['rec_texts'])
 
     # 轉繁體
-    from opencc import OpenCC
-    cc = OpenCC('s2t')
     texts = [cc.convert(t) for t in texts]
 
     print("===== OCR 辨識結果 =====")
@@ -538,6 +558,47 @@ def delete_history(history_id):
         print("❌ 刪除失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
+# ---------------------- 儲存訪客歷史紀錄 ----------------------
+@app.route('/save_guest_history', methods=['POST'])
+@jwt_required()
+def save_guest_history():
+    user_id = int(get_jwt_identity()) # 從 JWT 取得登入後的 user ID
+    data = request.get_json()
+    product_id = data.get('productID')
+
+    if not product_id:
+        return jsonify({"error": "缺少 productID"}), 400
+
+    try:
+        cur = mysql.connection.cursor()
+        
+        # 1. 檢查該 product 是否已經被這個 user 紀錄過
+        cur.execute(
+            "SELECT id FROM history WHERE userID=%s AND productID=%s",
+            (user_id, product_id)
+        )
+        if cur.fetchone():
+            cur.close()
+            return jsonify({"message": "紀錄已存在"}), 200
+
+        # 2. 插入新的 history 紀錄
+        cur.execute(
+            "INSERT INTO history (userID, productID, created_at) VALUES (%s, %s, NOW())",
+            (user_id, product_id)
+        )
+        history_id = cur.lastrowid
+        mysql.connection.commit()
+        cur.close()
+
+        print(f"✅ 已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
+        return jsonify({
+            "message": "歷史紀錄儲存成功",
+            "HistoryID": history_id
+        }), 200
+
+    except Exception as e:
+        print("❌ 儲存訪客歷史紀錄失敗:", traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------- 推薦商品 ----------------------
 
@@ -627,7 +688,9 @@ def update_product_status_once():
 
 # ---------------------- 啟動 ----------------------
 if __name__ == "__main__":
-    update_product_status_once() 
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        update_product_status_once()
+
 
     app.run(host='0.0.0.0', port=5000, debug=True)
 

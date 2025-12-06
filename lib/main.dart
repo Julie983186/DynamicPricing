@@ -51,11 +51,11 @@ class MyApp extends StatelessWidget {
 
         // 注意：/member_history 可能也需要修改，因為它的參數也是硬編碼的
         '/member_history': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return MemberHistoryPage(
-            userId: args['userId'],
-            userName: args['userName'],
-            token: args['token'],
+            userId: args?['userId'],
+            userName: args?['userName'],
+            token: args?['token'],
           );
         },
 

@@ -220,6 +220,34 @@ Future<List<dynamic>> fetchHistoryProducts(
     return [];
   }
 }
+
+/// ------------------ 儲存訪客歷史紀錄 ------------------
+Future<bool> saveGuestHistory(int productId, String token) async {
+  final url = Uri.parse('${ApiConfig.baseUrl}/save_guest_history');
+
+  try {
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token', // 登入後才會有 token
+      },
+      body: jsonEncode({'productID': productId}),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('歷史紀錄儲存成功');
+      return true;
+    } else {
+      debugPrint('歷史紀錄儲存失敗: ${response.body}');
+      return false;
+    }
+  } catch (e) {
+    debugPrint('連線錯誤: $e');
+    return false;
+  }
+}
+
 /// ------------------ 抓取單筆商品 AI 價格 ------------------
 Future<double?> fetchAIPrice(int productId) async {
   try {

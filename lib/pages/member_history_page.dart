@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
 import 'dart:io';
+import 'member_profile_page.dart';
 
 // 定義顏色常量
 const Color _kPrimaryGreen = Color(0xFF388E3C);
@@ -246,7 +247,23 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios, color: _kPrimaryGreen),
-            onPressed: () => Navigator.pop(context), 
+            onPressed: () {
+              if (widget.userId != null && widget.userName != null && widget.token != null) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MemberProfilePage(
+                      userId: widget.userId!,   // 使用 ! 確定不為 null
+                      userName: widget.userName!,
+                      token: widget.token!,
+                    ),
+                  ),
+                );
+              } else {
+                // 訪客模式或資料缺失，直接回上一頁或首頁
+                Navigator.pop(context);
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.fullscreen, color: _kPrimaryGreen), 

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'adviceproduct.dart';
 import '../services/route_logger.dart';
-import 'guest_login_page.dart';   // ⭐ 新增的登入頁
+import 'register_login_page.dart';
 import 'member_profile_page.dart';
 import 'scanning_picture_page.dart';
 import '../services/api_service.dart';
@@ -57,12 +57,10 @@ class _CountingResultState extends State<CountingResult> {
   bool _isGuest() => widget.userId == null || widget.token == null;
 
   Future<void> _discardScanRecord() async {
-    // 留空即可
+    // 可留空
   }
 
-  /// -------------------------------------------------------------------
-  /// ⭐ 訪客按「再次掃描」時出現提示：保留 or 不保留
-  /// -------------------------------------------------------------------
+  /// 訪客按「再次掃描」時提示登入或保留
   void _showGuestDialog() {
     if (_hasShownGuestDialog) return;
     _hasShownGuestDialog = true;
@@ -73,7 +71,8 @@ class _CountingResultState extends State<CountingResult> {
       builder: (_) {
         return AlertDialog(
           title: const Text("提示"),
-          content: const Text("您目前是訪客，要不要保留這筆掃描紀錄？若要保留需要先登入"),
+          content: const Text(
+              "您目前是訪客，要不要保留這筆掃描紀錄？若要保留需要先登入"),
           actions: [
             TextButton(
               child: const Text("不保留"),
@@ -90,23 +89,23 @@ class _CountingResultState extends State<CountingResult> {
                 }
               },
             ),
-
-            /// ⭐ 保留 → 跳「訪客專用登入頁」
             ElevatedButton(
               child: const Text("保留"),
               onPressed: () async {
                 Navigator.of(context).pop();
 
-                if (productId != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => GuestLoginPage(
-                        productId: productId!, // 傳去綁定紀錄
-                      ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RegisterLoginPage(
+                      returnRoute: '/member_history',
+                      returnAction: "saveRecord",
+                      returnArgs: {
+                        "productId": productId,
+                      },
                     ),
-                  );
-                }
+                  ),
+                );
               },
             ),
           ],
@@ -115,6 +114,7 @@ class _CountingResultState extends State<CountingResult> {
     ).then((_) => _hasShownGuestDialog = false);
   }
 
+  /// 已登入會員按下會員圖示但未登入
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
@@ -131,7 +131,16 @@ class _CountingResultState extends State<CountingResult> {
               child: const Text("登入/註冊"),
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/login');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RegisterLoginPage(
+                      returnRoute: '/member_profile',
+                      returnAction: null, // 可以保留
+                      returnArgs: {},
+                    ),
+                  ),
+                );
               },
             ),
           ],
@@ -156,9 +165,6 @@ class _CountingResultState extends State<CountingResult> {
     return Colors.black;
   }
 
-  /// -------------------------------------------------------------------
-  /// ⭐ UI
-  /// -------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final info = widget.productInfo ?? {};
@@ -172,9 +178,6 @@ class _CountingResultState extends State<CountingResult> {
       body: SafeArea(
         child: Stack(
           children: [
-            //----------------------------------------------------
-            // 上方商品資訊
-            //----------------------------------------------------
             SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: 250),
               child: Column(
@@ -185,7 +188,7 @@ class _CountingResultState extends State<CountingResult> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // ------------------ 左側會員圖示 ------------------
+                        // 左側會員圖示
                         InkWell(
                           onTap: () {
                             if (_isGuest()) {
@@ -208,8 +211,7 @@ class _CountingResultState extends State<CountingResult> {
                                 width: 35,
                                 height: 35,
                                 decoration: BoxDecoration(
-                                  color:
-                                      const Color(0xFF388E3C).withOpacity(0.5),
+                                  color: const Color(0xFF388E3C).withOpacity(0.5),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.account_circle,
@@ -228,11 +230,10 @@ class _CountingResultState extends State<CountingResult> {
                           ),
                         ),
 
-                        // ------------------ LOGO ------------------
-                        Image.asset('assets/logo.png',
-                            height: 90, fit: BoxFit.contain),
+                        // LOGO
+                        Image.asset('assets/logo.png', height: 90, fit: BoxFit.contain),
 
-                        // ------------------ 再次掃描 ------------------
+                        // 再次掃描
                         InkWell(
                           onTap: () {
                             if (_isGuest()) {
@@ -262,9 +263,7 @@ class _CountingResultState extends State<CountingResult> {
 
                   const SizedBox(height: 20),
 
-                  //----------------------------------------------------
                   // 商品卡片
-                  //----------------------------------------------------
                   Container(
                     width: 330,
                     padding: const EdgeInsets.all(16),
@@ -278,38 +277,26 @@ class _CountingResultState extends State<CountingResult> {
                           Container(
                             width: 220,
                             height: 200,
-                            child: Image.file(
-                              File(widget.imagePath!),
-                              fit: BoxFit.contain,
-                            ),
+                            child: Image.file(File(widget.imagePath!), fit: BoxFit.contain),
                           ),
-
                         const SizedBox(height: 12),
                         Text("商品名稱：$name",
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w500)),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 6),
-                        Text("有效期限：$expireDate",
-                            style: const TextStyle(fontSize: 16)),
+                        Text("有效期限：$expireDate", style: const TextStyle(fontSize: 16)),
                         const SizedBox(height: 6),
-                        Text("原價：\$$price",
-                            style: const TextStyle(fontSize: 16)),
+                        Text("原價：\$$price", style: const TextStyle(fontSize: 16)),
                         const SizedBox(height: 6),
-                        Text("即期價格：\$$proPrice",
-                            style: const TextStyle(
-                                fontSize: 16, color: Colors.red)),
+                        Text("即期價格：\$$proPrice", style: const TextStyle(fontSize: 16, color: Colors.red)),
                         const SizedBox(height: 16),
 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            buildPriceBox("即期價格", "\$$proPrice",
-                                isDiscount: false),
+                            buildPriceBox("即期價格", "\$$proPrice", isDiscount: false),
                             buildPriceBox(
                               "AI定價",
-                              AiPrice != null
-                                  ? "\$${AiPrice!.toInt()}"
-                                  : "計算中…",
+                              AiPrice != null ? "\$${AiPrice!.toInt()}" : "計算中…",
                               isDiscount: true,
                             ),
                           ],
@@ -337,9 +324,7 @@ class _CountingResultState extends State<CountingResult> {
               ),
             ),
 
-            //----------------------------------------------------
             // 推薦商品
-            //----------------------------------------------------
             DraggableScrollableSheet(
               initialChildSize: 0.25,
               maxChildSize: 0.85,
@@ -348,8 +333,7 @@ class _CountingResultState extends State<CountingResult> {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -372,8 +356,7 @@ class _CountingResultState extends State<CountingResult> {
     );
   }
 
-  Widget buildPriceBox(String title, String price,
-      {bool isDiscount = false}) {
+  Widget buildPriceBox(String title, String price, {bool isDiscount = false}) {
     return SizedBox(
       width: 130,
       child: Container(
@@ -384,12 +367,8 @@ class _CountingResultState extends State<CountingResult> {
         ),
         child: Column(
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                  fontSize: isDiscount ? 16 : 18,
-                  fontWeight: FontWeight.w600),
-            ),
+            Text(title,
+                style: TextStyle(fontSize: isDiscount ? 16 : 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             Text(
               price,
@@ -397,8 +376,7 @@ class _CountingResultState extends State<CountingResult> {
                 fontSize: isDiscount ? 26 : 24,
                 fontWeight: FontWeight.bold,
                 color: isDiscount ? Colors.deepOrange : Colors.black,
-                decoration:
-                    isDiscount ? null : TextDecoration.lineThrough,
+                decoration: isDiscount ? null : TextDecoration.lineThrough,
               ),
             ),
           ],

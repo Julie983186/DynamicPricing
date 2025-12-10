@@ -8,27 +8,6 @@ import 'recognition_loading_page.dart';
 import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 
-
-Future<void> _deleteProductAndRescan(BuildContext context, int productId) async {
-  try {
-    final url = Uri.parse('${ApiConfig.baseUrl}/product/$productId');
-    final response = await http.delete(url);
-
-    if (response.statusCode == 200) {
-      print('✅ 已刪除商品 $productId');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const ScanningPicturePage()),
-      );
-    } else {
-      print('刪除商品失敗: ${response.body}');
-    }
-  } catch (e) {
-    print('連線錯誤: $e');
-  }
-}
-
-
 class RecognitionResultPage extends StatelessWidget {
   final int? userId;
   final String? userName;
@@ -46,6 +25,56 @@ class RecognitionResultPage extends StatelessWidget {
     this.imagePath,
     this.productInfo,
   });
+
+  /// 🚀 刪除商品後重新掃描
+  Future<void> _deleteProductAndRescan(int productId, BuildContext context) async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/product/$productId');
+      final response = await http.delete(url);
+
+      if (response.statusCode == 200) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('商品已刪除，請重新掃描'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScanningPicturePage(
+              userId: userId,
+              userName: userName,
+              token: token,
+            ),
+          ),
+        );
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('刪除商品失敗: ${response.body}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        print('刪除商品失敗: ${response.body}');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('連線錯誤: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      print('連線錯誤: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,39 +109,21 @@ class RecognitionResultPage extends StatelessWidget {
             const SizedBox(height: 20),
 
             // 商品資訊
-            Text("商品名稱：$name",
-                style: const TextStyle(fontSize: 18),
-                textAlign: TextAlign.center),
+            Text("商品名稱：$name", style: const TextStyle(fontSize: 18), textAlign: TextAlign.center),
             const SizedBox(height: 10),
-
-            Text("有效期限：$date",
-                style: const TextStyle(fontSize: 18),
-                textAlign: TextAlign.center),
+            Text("有效期限：$date", style: const TextStyle(fontSize: 18), textAlign: TextAlign.center),
             const SizedBox(height: 10),
-
-            Text("原價：$price",
-                style: const TextStyle(fontSize: 18),
-                textAlign: TextAlign.center),
+            Text("原價：$price", style: const TextStyle(fontSize: 18), textAlign: TextAlign.center),
             const SizedBox(height: 10),
-
-            Text("即期價格：$proprice",
-                style: const TextStyle(fontSize: 18, color: Colors.red),
-                textAlign: TextAlign.center),
+            Text("即期價格：$proprice", style: const TextStyle(fontSize: 18, color: Colors.red), textAlign: TextAlign.center),
             const SizedBox(height: 10),
-
-            Text("賣場：$market",
-                style: const TextStyle(fontSize: 18, color: Colors.blueGrey),
-                textAlign: TextAlign.center),
+            Text("賣場：$market", style: const TextStyle(fontSize: 18, color: Colors.blueGrey), textAlign: TextAlign.center),
             const SizedBox(height: 20),
 
             // 驗證文字
             const Text(
               '產品名稱及有效期限是否正確？',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.red,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.red, fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -123,7 +134,7 @@ class RecognitionResultPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => LoadingPage( // or CountingPage
+                    builder: (_) => LoadingPage(
                       userId: userId,
                       userName: userName,
                       token: token,
@@ -161,8 +172,7 @@ class RecognitionResultPage extends StatelessWidget {
                 backgroundColor: const Color.fromARGB(255, 90, 157, 92),
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child:
-                  const Text('手動修改', style: TextStyle(color: Colors.white)),
+              child: const Text('手動修改', style: TextStyle(color: Colors.white)),
             ),
             const SizedBox(height: 10),
 
@@ -171,7 +181,7 @@ class RecognitionResultPage extends StatelessWidget {
               onPressed: () async {
                 final productId = productInfo?["ProductID"];
                 if (productId != null) {
-                  await _deleteProductAndRescan(context, productId);
+                  await _deleteProductAndRescan(productId, context);
                 }
               },
               style: ElevatedButton.styleFrom(

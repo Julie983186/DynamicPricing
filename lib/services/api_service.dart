@@ -278,3 +278,41 @@ Future<double?> fetchAIPrice(int productId) async {
     return null;
   }
 }
+
+//登入儲存掃描紀錄
+Future<bool> saveScanRecord({
+  required int userId,
+  required String token,
+  required int productId,
+}) async {
+  try {
+    final url = Uri.parse('${ApiConfig.baseUrl}/scan_records'); // <-- 確認路徑
+    final body = jsonEncode({
+      'userId': userId,
+      'productId': productId,
+    });
+
+    print('🔹 saveScanRecord URL: $url');
+    print('🔹 saveScanRecord body: $body');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: body,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("✅ saveScanRecord 成功: productId=$productId");
+      return true;
+    } else {
+      print("❌ saveScanRecord 失敗: ${response.statusCode} ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ saveScanRecord 例外: $e");
+    return false;
+  }
+}

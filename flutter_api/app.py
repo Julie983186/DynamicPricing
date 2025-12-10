@@ -668,6 +668,50 @@ def update_product_status_once():
         except Exception as e:
             print("❌ 自動更新狀態失敗:", e)
 
+# ---------------------- 訪客登入後儲存 ----------------------
+
+@app.route('/scan_records', methods=['POST'])
+@jwt_required()
+def save_scan_record():
+    user_id = int(get_jwt_identity())  # 從 JWT 取得登入後的 user ID
+    data = request.get_json()
+    product_id = data.get('productId')  # Flutter 端傳 productId
+
+    if not product_id:
+        return jsonify({"error": "缺少 productId"}), 400
+
+    try:
+        cur = mysql.connection.cursor()
+        
+        # 1️⃣ 檢查是否已經紀錄過
+        cur.execute(
+            "SELECT id FROM history WHERE userID=%s AND productID=%s",
+            (user_id, product_id)
+        )
+        if cur.fetchone():
+            cur.close()
+            return jsonify({"message": "紀錄已存在"}), 200
+
+        # 2️⃣ 插入新的 history 紀錄
+        cur.execute(
+            "INSERT INTO history (userID, productID, created_at) VALUES (%s, %s, NOW())",
+            (user_id, product_id)
+        )
+        history_id = cur.lastrowid
+        mysql.connection.commit()
+        cur.close()
+
+        print(f"✅ 已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
+        return jsonify({
+            "message": "歷史紀錄儲存成功",
+            "HistoryID": history_id
+        }), 201  # 用 201 Created 更語意化
+
+    except Exception as e:
+        print("❌ 儲存掃描紀錄失敗:", traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+
 
 # ---------------------- 啟動 ----------------------
 if __name__ == "__main__":

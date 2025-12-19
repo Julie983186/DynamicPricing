@@ -34,7 +34,7 @@ class _LoadingPageState extends State<LoadingPage> {
     super.initState();
     saveCurrentRoute('/counting');
 
-    // 延遲 0.5 秒後開始呼叫 API 計算
+    //0.5秒後開始呼叫API計算
     Future.delayed(const Duration(milliseconds: 500), _fetchAiPriceAndGo);
   }
 
@@ -44,14 +44,14 @@ class _LoadingPageState extends State<LoadingPage> {
     try {
       final productId = widget.productInfo!["ProductID"];
 
-      // 🔹 呼叫後端 /predict_price API
+      //呼叫後端 predict_price API
       final uri = Uri.parse("${ApiConfig.baseUrl}/predict_price?productId=$productId");
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
 
-        // 找到對應 ProductID 的結果
+        // ProductID 的結果
         final productData =
             data.firstWhere((e) => e["ProductID"] == productId, orElse: () => null);
 
@@ -83,9 +83,9 @@ class _LoadingPageState extends State<LoadingPage> {
         throw Exception("API 回傳錯誤: ${response.statusCode}");
       }
     } catch (e) {
-      debugPrint("❌ 呼叫 AI 價格 API 發生錯誤: $e");
+      debugPrint("AI價格的API發生錯誤: $e");
 
-      // 🔹 出錯也跳轉到結果頁顯示原始資料
+      //錯誤也顯示頁面
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -127,7 +127,7 @@ class _LoadingPageState extends State<LoadingPage> {
             ),
             const SizedBox(height: 10),
             const Text(
-              '請稍待',
+              '請稍後',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.black54,

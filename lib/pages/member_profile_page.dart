@@ -4,7 +4,7 @@ import '../services/route_logger.dart';
 import 'scanning_picture_page.dart';
 import 'member_history_page.dart';
 
-// 定義顏色常量
+// 顏色
 const Color _kPrimaryGreen = Color(0xFF388E3C);
 const Color _kLightGreenBg = Color(0xFFE8F5E9);
 const Color _kCardBg = Color(0xFFF1F8E9);
@@ -27,7 +27,6 @@ class MemberProfilePage extends StatefulWidget {
 }
 
 class _MemberProfilePageState extends State<MemberProfilePage> {
-  // 使用 String 而非 TextEditingController
   String _name = '';
   String _phone = '';
   String _email = '';
@@ -41,7 +40,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
     saveCurrentRoute('/member_profile');
   }
 
-  // --- 載入會員資料 ---
+  // 載入會員資料
   Future<void> _loadUserData() async {
     final userData = await fetchUserData(widget.userId, widget.token);
     if (userData != null && mounted) {
@@ -79,10 +78,10 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          const SizedBox(height: 10), // 保留頂部間距
+                          const SizedBox(height: 10), 
                           // 1. LOGO (使用 Padding 控制與下方卡片的間距)
                           Padding(
-                            padding: const EdgeInsets.only(top: 60.0, bottom: 20.0), // 統一使用 20.0 的底部間距
+                            padding: const EdgeInsets.only(top: 60.0, bottom: 20.0), 
                             child: _buildLogo(),
                           ),
                           
@@ -100,10 +99,10 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
     );
   }
 
-  // LOGO 區塊 (高度調整為 160，與 MemberEditPage 保持一致)
+  // LOGO 區塊
   Widget _buildLogo() {
     return SizedBox(
-      height: 160, // 調整為 160
+      height: 160, 
       width: double.infinity,
       child: Center(
         child: Image.asset(
@@ -135,7 +134,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 頂部操作
+          // 頂部
           _buildActionButtons(context),
           const SizedBox(height: 10),
 
@@ -168,7 +167,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
           ),
           const SizedBox(height: 30),
 
-          // 修改按鈕 → 進入 /member_edit
+          // 修改按鈕 → 進入member_edit
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -190,7 +189,7 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
                   );
-                  _loadUserData(); // ✅ 重新讀會員資料
+                  _loadUserData(); // 重新讀取會員資料
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -266,7 +265,6 @@ class _MemberProfilePageState extends State<MemberProfilePage> {
           Text(label, style: const TextStyle(fontSize: 16, color: _kPrimaryGreen)),
         ],
       ),
-      // 保持原始的邏輯和樣式
     );
   }
 

@@ -4,10 +4,9 @@ import '../services/route_logger.dart';
 import 'scanning_picture_page.dart';
 
 class RegisterLoginPage extends StatefulWidget {
-  final String? returnAction; // 登入/註冊後要執行的動作，例如 saveScanRecord
-  final Map<String, dynamic>? returnArgs; // returnAction 的參數，例如 productId
-  final String? returnRoute; // 成功後要跳回的頁面，例如 /countingResult 或 /member_history
-
+  final String? returnAction; 
+  final Map<String, dynamic>? returnArgs; 
+  final String? returnRoute; 
   const RegisterLoginPage({
     super.key,
     this.returnAction,
@@ -48,7 +47,7 @@ class _RegisterLoginPageState extends State<RegisterLoginPage> {
       case "saveRecord":
         final productId = widget.returnArgs?["productId"];
         if (productId != null) {
-          print("🟢 saveScanRecord -> userId=${user['id']}, productId=$productId");
+          print("saveScanRecord -> userId=${user['id']}, productId=$productId");
           await saveScanRecord(
             userId: user["id"],
             token: user["token"],
@@ -198,8 +197,7 @@ Widget buildTextField(String label,
   );
 }
 
-// ============================================================
-// 註冊表單（註冊完成後切換到登入 Tab）
+// 註冊表單
 class RegisterForm extends StatefulWidget {
   final Future<void> Function(BuildContext, Map<String, dynamic>) onFinish;
   final String? returnAction;
@@ -254,7 +252,7 @@ class _RegisterFormState extends State<RegisterForm> {
       const SnackBar(content: Text('註冊成功，請登入'), backgroundColor: Colors.green),
     );
 
-    // 切換到登入 Tab
+    // 切換到登入
     widget.tabController?.animateTo(1);
   }
 
@@ -299,7 +297,6 @@ class _RegisterFormState extends State<RegisterForm> {
   }
 }
 
-// ============================================================
 // 登入表單
 class LoginForm extends StatefulWidget {
   final Future<void> Function(BuildContext, Map<String, dynamic>) onFinish;

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/route_logger.dart';
-import 'counting.dart'; // ✅ 導向目標
+import 'counting.dart';
 import 'scanning_picture_page.dart';
 import 'recognition_edit_page.dart';
 import 'recognition_loading_page.dart'; 
@@ -26,7 +26,7 @@ class RecognitionResultPage extends StatelessWidget {
     this.productInfo,
   });
 
-  /// 🚀 刪除商品後重新掃描
+  /// 刪除商品後重新掃描
   Future<void> _deleteProductAndRescan(int productId, BuildContext context) async {
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/product/$productId');
@@ -101,7 +101,7 @@ class RecognitionResultPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // 拍攝的圖片 (如果有)
+            // 拍照圖片 
             if (imagePath != null)
               Image.file(File(imagePath!), height: 200, fit: BoxFit.contain)
             else
@@ -120,7 +120,7 @@ class RecognitionResultPage extends StatelessWidget {
             Text("賣場：$market", style: const TextStyle(fontSize: 18, color: Colors.blueGrey), textAlign: TextAlign.center),
             const SizedBox(height: 20),
 
-            // 驗證文字
+            // 確認 ORC 辨識文字
             const Text(
               '產品名稱及有效期限是否正確？',
               style: TextStyle(fontSize: 16, color: Colors.red, fontWeight: FontWeight.w600),
@@ -128,7 +128,7 @@ class RecognitionResultPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // 「正確」按鈕
+            // 正確送出資料
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -152,7 +152,7 @@ class RecognitionResultPage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // 「手動修改」按鈕
+            // 手動修改資料
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -176,7 +176,7 @@ class RecognitionResultPage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
-            // 「重新掃描」按鈕
+            // 重新掃描
             ElevatedButton(
               onPressed: () async {
                 final productId = productInfo?["ProductID"];

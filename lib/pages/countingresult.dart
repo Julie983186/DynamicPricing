@@ -57,10 +57,10 @@ class _CountingResultState extends State<CountingResult> {
   bool _isGuest() => widget.userId == null || widget.token == null;
 
   Future<void> _discardScanRecord() async {
-    // 可留空
+    
   }
 
-  /// 訪客按「再次掃描」時提示登入或保留
+  // 訪客按再次掃描時 提示登入或保留
   void _showGuestDialog() {
     if (_hasShownGuestDialog) return;
     _hasShownGuestDialog = true;
@@ -114,7 +114,7 @@ class _CountingResultState extends State<CountingResult> {
     ).then((_) => _hasShownGuestDialog = false);
   }
 
-  /// 已登入會員按下會員圖示但未登入
+  // 會員圖示進入判斷會員是否登入
   void _showLoginRequiredDialog() {
     showDialog(
       context: context,
@@ -136,7 +136,7 @@ class _CountingResultState extends State<CountingResult> {
                   MaterialPageRoute(
                     builder: (_) => RegisterLoginPage(
                       returnRoute: '/member_profile',
-                      returnAction: null, // 可以保留
+                      returnAction: null, 
                       returnArgs: {},
                     ),
                   ),
@@ -307,8 +307,8 @@ class _CountingResultState extends State<CountingResult> {
                         if (reason != null)
                           Text(
                             reason == "合理"
-                                ? "✅ 價格落於合理範圍"
-                                : "❗ 價格不合理，建議勿購買",
+                                ? "價格落於建議合理範圍"
+                                : "價格不合理，不建議購買",
                             style: TextStyle(
                               color: getReasonColor(reason),
                               fontSize: 18,

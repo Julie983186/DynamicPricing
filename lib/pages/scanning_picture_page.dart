@@ -282,35 +282,6 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
     );
   }
 
-  /*
-  Widget _buildScanMask() {
-    return ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        const Color(0xFFE8F5E9).withOpacity(0.5),
-        BlendMode.srcOut,
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            color: const Color(0xFFE8F5E9),
-            child: Align(
-              alignment: Alignment.center,
-              child: Container(
-                width: 320,
-                height: 900,
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }*/
-
   Widget _buildScanLine() {
     return Align(
       alignment: Alignment.center,
@@ -389,23 +360,23 @@ class _ScanningPicturePageState extends State<ScanningPicturePage>
       final image = await controller.takePicture();
       print('臨時照片路徑: ${image.path}');
 
-      // -------- 儲存到永久資料夾 --------
+      // 儲存到永久資料夾
       final appDir = await getApplicationDocumentsDirectory(); // App Documents 路徑
       final scansDir = Directory('${appDir.path}/scans');
 
-      // 如果資料夾不存在，則建立
+      // 如果資料夾不存在 建立資料夾
       if (!await scansDir.exists()) {
         await scansDir.create(recursive: true);
         print('建立資料夾: ${scansDir.path}');
       }
 
-      // 產生唯一檔名，避免覆蓋
+      // 產生唯一檔名
       final fileName = 'scan_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final savedImage = await File(image.path).copy('${scansDir.path}/$fileName');
 
       print('照片已永久儲存至: ${savedImage.path}');
 
-      // -------- 導入 RecognitionLoadingPage --------
+      // 導入 RecognitionLoadingPage 
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

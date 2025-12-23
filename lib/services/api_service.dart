@@ -2,8 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart'; // kIsWeb
-
+import 'package:flutter/foundation.dart'; 
 /// ------------------ 全域 IP 設定 ------------------
 class ApiConfig {
   static const String baseUrl = 'http://192.168.0.129:5000'; 
@@ -38,7 +37,6 @@ Future<bool> registerUser(String name, String phone, String email, String passwo
 }
 
 /// ------------------ 登入 ------------------
-/// 回傳 id, name, token
 Future<Map<String, dynamic>?> loginUser(String email, String password) async {
   final url = Uri.parse('${ApiConfig.baseUrl}/login');
 
@@ -55,7 +53,7 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
       return {
         'id': data['user']['id'],
         'name': data['user']['name'],
-        'token': data['token'], // ✅ JWT token
+        'token': data['token'], 
       };
     } else {
       print('登入失敗: ${response.body}');
@@ -68,7 +66,6 @@ Future<Map<String, dynamic>?> loginUser(String email, String password) async {
 }
 
 /// ------------------ 抓取會員資料 ------------------
-/// 需要帶 token
 Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
   final url = Uri.parse('${ApiConfig.baseUrl}/user/$userId');
 
@@ -77,7 +74,7 @@ Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // ✅ 加 token
+        'Authorization': 'Bearer $token', 
       },
     );
 
@@ -94,7 +91,6 @@ Future<Map<String, dynamic>?> fetchUserData(int userId, String token) async {
 }
 
 /// ------------------ 更新會員資料 ------------------
-/// 需要帶 token
 Future<bool> updateUserData({
   required int userId,
   required String token,
@@ -121,7 +117,7 @@ Future<bool> updateUserData({
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // ✅ 加 token
+        'Authorization': 'Bearer $token', 
       },
       body: jsonEncode(body),
     );
@@ -184,7 +180,6 @@ class RegisterScreen extends StatelessWidget {
 }
 
 /// ------------------ 抓取會員歷史商品紀錄 ------------------
-/// 需要帶 token，可選擇帶日期（dateString）
 Future<List<dynamic>> fetchHistoryProducts(
   int userId,
   String? token, {
@@ -230,7 +225,7 @@ Future<bool> saveGuestHistory(int productId, String token) async {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // 登入後才會有 token
+        'Authorization': 'Bearer $token', // 登入後才有 token
       },
       body: jsonEncode({'productID': productId}),
     );
@@ -257,7 +252,6 @@ Future<double?> fetchAIPrice(int productId) async {
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
 
-      // 改用 ProductID 找對應商品
       final match = data.firstWhere(
         (item) => item['ProductID'] == productId,
         orElse: () => null,
@@ -286,7 +280,7 @@ Future<bool> saveScanRecord({
   required int productId,
 }) async {
   try {
-    final url = Uri.parse('${ApiConfig.baseUrl}/scan_records'); // <-- 確認路徑
+    final url = Uri.parse('${ApiConfig.baseUrl}/scan_records'); 
     final body = jsonEncode({
       'userId': userId,
       'productId': productId,
@@ -305,14 +299,14 @@ Future<bool> saveScanRecord({
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print("✅ saveScanRecord 成功: productId=$productId");
+      print("saveScanRecord 成功: productId=$productId");
       return true;
     } else {
-      print("❌ saveScanRecord 失敗: ${response.statusCode} ${response.body}");
+      print("saveScanRecord 失敗: ${response.statusCode} ${response.body}");
       return false;
     }
   } catch (e) {
-    print("❌ saveScanRecord 例外: $e");
+    print("saveScanRecord 例外: $e");
     return false;
   }
 }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
-// import pages
 import 'pages/splash_screen.dart'; 
 import 'pages/scanning_picture_page.dart';
 import 'pages/recognition_loading_page.dart';
@@ -29,7 +27,6 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.green),
 
-      // localization (保持不變)
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -40,16 +37,13 @@ class MyApp extends StatelessWidget {
         Locale('en', 'US'),
       ],
 
-      // 應用程式永遠從 /splash 啟動
       initialRoute: '/splash',
       routes: {
-        // ------------------ 啟動畫面路由 ------------------
+        // ------------------ 啟動畫面 ------------------
         '/splash': (context) => const SplashScreen(),
 
-        // ------------------ 會員相關路由 ------------------
+        // ------------------ 會員 ------------------
         '/login': (context) => const RegisterLoginPage(), 
-
-        // 注意：/member_history 可能也需要修改，因為它的參數也是硬編碼的
         '/member_history': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return MemberHistoryPage(
@@ -58,8 +52,6 @@ class MyApp extends StatelessWidget {
             token: args?['token'],
           );
         },
-
-
         '/member_profile': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return MemberProfilePage(
@@ -68,7 +60,6 @@ class MyApp extends StatelessWidget {
             token: args['token'],
           );
         },
-        
         '/member_edit': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return MemberEditPage(
@@ -79,8 +70,7 @@ class MyApp extends StatelessWidget {
             token: args['token'],
           );
         },
-
-        // ------------------ 掃描與識別路由 (保持不變) ------------------
+        // ------------------ 掃描與識別 -----------------
         '/scan': (context) => ScanningPicturePage(),
         '/counting': (context) => LoadingPage(),
         '/countingResult': (context) => CountingResult(),
@@ -88,7 +78,7 @@ class MyApp extends StatelessWidget {
         '/resultCheck': (context) => RecognitionResultPage(),
         '/edit': (context) => RecognitionEditPage(),
 
-        // ------------------ 推薦商品路由 (保持不變) ------------------
+        // ------------------ 推薦商品 ------------------
         '/advice_product': (context) => Scaffold(
           appBar: AppBar(title: const Text('推薦商品')),
           body: AdviceProductList(

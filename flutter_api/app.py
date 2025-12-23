@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, request, jsonify
 from flask_mysqldb import MySQL
 from flask_cors import CORS
@@ -30,7 +29,6 @@ jwt = JWTManager(app)
 
 
 mysql = MySQL(app)
-# app.py 修改後的程式碼
 ocr = PaddleOCR(lang='ch', use_textline_orientation=False, ocr_version='PP-OCRv4')
 
 
@@ -45,12 +43,12 @@ BEAN_KEYWORDS = ["豆腐", "豆干", "豆皮", "百頁", "豆包", "素"]
 READY_TO_EAT_KEYWORDS = ["三明治", "便當", "沙拉", "餃子皮", "火鍋料", "水果盤"]
 
 
-# -------- 工具函數 --------
+
 def extract_prices(texts):
     normal_candidates = []
 
     for line in texts:
-        # 只抓純「數字 + 元」
+        
         matches = re.findall(r"(\d+(?:\.\d+)?)\s*元", line)
 
         for m in matches:
@@ -67,10 +65,9 @@ def extract_prices(texts):
 
 def extract_product_info(texts):
     info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
-    max_length = 0  # 用來記錄目前抓到的最長名稱
+    max_length = 0 
     full_text = "\n".join(texts)
-
-    # 商品名稱：抓到有關鍵字的最長行
+    # 商品名稱
     for line in texts:
         if any(k in line for k in MEAT_KEYWORDS + SEAFOOD_KEYWORDS + VEG_KEYWORDS +
                                 BAKERY_KEYWORDS + BEAN_KEYWORDS + READY_TO_EAT_KEYWORDS):
@@ -119,7 +116,7 @@ def normalize_date(expire_str):
         status = "未過期" if exp >= date.today() else "已過期"
         return exp.strftime("%Y-%m-%d"), status
     except Exception as e:
-        print("❌ 日期解析失敗:", expire_str, e)
+        print("日期解析失敗:", expire_str, e)
         return None, "未知"
 
 # ---------------------- OCR API ----------------------
@@ -137,12 +134,10 @@ def ocr_api():
     market = request.form.get("market", "未知賣場")
     user_id = get_jwt_identity()
 
-    # 💡 強制存到伺服器 uploads/
     filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
     filepath = os.path.join(UPLOAD_DIR, filename)
     file.save(filepath)
 
-    # 存到資料庫的是相對路徑
     db_path = f"/uploads/{filename}"
 
 
@@ -185,7 +180,7 @@ def ocr_api():
             db_path
         ))
         product_id = cur.lastrowid
-        print("✅ 插入 product 成功, ProductID:", product_id)
+        print("插入 product 成功, ProductID:", product_id)
 
         # 寫入 history
         print("登入 user_id:", user_id)
@@ -194,7 +189,7 @@ def ocr_api():
                 "INSERT INTO history (userID, productID, created_at) VALUES (%s, %s, NOW())",
                 (user_id, product_id)
             )
-            print("✅ 已新增 history 紀錄")
+            print("已新增 history 紀錄")
 
         mysql.connection.commit()
         cur.close()
@@ -206,11 +201,11 @@ def ocr_api():
             "ProductType": product_type,
             "ProductID": product_id,
             "Market": market,
-            "ImagePath": db_path  # 💡 直接回傳 Flutter 路徑
+            "ImagePath": db_path
         }), 200
 
     except Exception as e:
-        print("❌ 插入失敗:", traceback.format_exc())
+        print("插入失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
 # ---------------------- 圖片存取 API ----------------------
@@ -224,17 +219,14 @@ def uploaded_file(filename):
 def predict_price_api():
     try:
         cur = mysql.connection.cursor()
-        # 多抓 Status 欄位
         cur.execute("SELECT ProductID, ProName, ProPrice, Price, ExpireDate, Status, ProductType FROM product")
         rows = cur.fetchall()
         df = pd.DataFrame(rows, columns=['ProductID','ProName','ProPrice','price','ExpireDate','Status','商品大類'])        
-        # 🧹 過濾掉已過期商品
         before = len(df)
         df = df[df['Status'] != '已過期']
         after = len(df)
-        print(f"🔍 已過濾掉 {before - after} 筆已過期商品，剩下 {after} 筆需重新計算")
+        print(f"已過濾掉 {before - after} 筆已過期商品，剩下 {after} 筆需重新計算")
 
-        # 呼叫 AI 預測
         df = predict_price(df, update_db=True, mysql=mysql)
         
         cur.close()
@@ -244,58 +236,19 @@ def predict_price_api():
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-
-# ---------------------- 背景自動降價 ----------------------
-'''def auto_update_prices(interval=300):  #更新頻率
-    with app.app_context():  # ✅ 需要在 Flask app context 內操作資料庫
-        while True:
-            print("\n⏰ 自動降價執行中...")
-
-            # 1️⃣ 從資料庫抓資料 (以 AI 預測價格 ProPrice 為基準)
-            cur = mysql.connection.cursor()
-            cur.execute("SELECT ProductID, AiPrice, ExpireDate FROM product")
-            rows = cur.fetchall()
-            cur.close()
-
-            df = pd.DataFrame(rows, columns=['ProductID','AiPrice','ExpireDate'])
-            
-            # 2️⃣ 轉型數字 & 日期
-            df['AiPrice'] = pd.to_numeric(df['AiPrice'], errors='coerce').fillna(0)
-            df['ExpireDate'] = pd.to_datetime(df['ExpireDate'])
-
-            # 3️⃣ 計算剩餘天數
-            df['DaysLeft'] = (df['ExpireDate'] - pd.Timestamp.now()).dt.days.clip(lower=0)
-
-            # 4️⃣ 計算折扣 & 降價後價格
-            # 範例：剩餘天數越少，折扣越高
-            df['Discount'] = df['DaysLeft'].apply(lambda x: min(0.5, max(0.05, 0.5 - x * 0.02)))
-            df['CurrentPrice'] = (df['AiPrice'] * (1 - df['Discount'])).round(0).astype(int)
-
-            # 5️⃣ 更新資料庫 AiPrice
-            cur = mysql.connection.cursor()
-            for _, row in df.iterrows():
-                cur.execute(
-                    "UPDATE product SET CurrentPrice=%s WHERE ProductID=%s",
-                    (row['CurrentPrice'], row['ProductID'])
-                )
-            mysql.connection.commit()
-            cur.close()
-
-            print(df[['ProductID','AiPrice','CurrentPrice','DaysLeft','Discount']])
-            time.sleep(interval)'''
 # ---------------------- 更新商品 API ----------------------
 @app.route("/product/<int:product_id>", methods=["PUT"])
 def update_product(product_id):
     data = request.get_json()
     fields = {k: v for k, v in data.items() if k in ["ProName", "ExpireDate", "Price", "ProPrice", "Market", "Status", "ProductType", "ImagePath"]}
 
-    # 如果有更新日期 → 重新計算 Status
+    # 更新日期就重新計算 Status
     if "ExpireDate" in fields:
         expire_date, status = normalize_date(fields["ExpireDate"])
         fields["ExpireDate"] = expire_date
         fields["Status"] = status
 
-    # 如果有更新商品名稱 → 重新計算 ProductType
+    # 更新商品名稱就重新計算 ProductType
     if "ProName" in fields:
         fields["ProductType"] = detect_product_type(fields["ProName"])
 
@@ -311,10 +264,10 @@ def update_product(product_id):
         cur.execute(sql, values)
         mysql.connection.commit()
         cur.close()
-        print(f"✅ 已更新 Product {product_id}, 更新欄位: {fields}")
+        print(f"已更新 Product {product_id}, 更新欄位: {fields}")
         return jsonify({"message": "更新成功", "fields": fields}), 200
     except Exception as e:
-        print("❌ 更新失敗:", traceback.format_exc())
+        print("更新失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 刪除商品 API ----------------------
@@ -322,20 +275,18 @@ def update_product(product_id):
 def delete_product(product_id):
     try:
         cur = mysql.connection.cursor()
-        # 檢查是否存在
         cur.execute("SELECT ProductID FROM product WHERE ProductID=%s", (product_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({"error": "商品不存在"}), 404
 
-        # 刪除該商品
         cur.execute("DELETE FROM product WHERE ProductID=%s", (product_id,))
         mysql.connection.commit()
         cur.close()
 
         return jsonify({"message": f"已刪除 ProductID={product_id}"}), 200
     except Exception as e:
-        print("❌ 刪除商品失敗:", traceback.format_exc())
+        print("刪除商品失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
     
 # ---------------------- 註冊 ----------------------
@@ -380,7 +331,6 @@ def login():
                 'phone': user[2],
                 'email': user[3]
             }
-            # 建立 JWT Token
             token = create_access_token(identity=str(user_data['id']))
             return jsonify({'message': '登入成功', 'user': user_data, 'token': token}), 200
         else:
@@ -439,7 +389,7 @@ def update_user(user_id):
         cur.execute(sql, values)
         mysql.connection.commit()
 
-        # 再抓更新後的資料
+        # 抓更新後的資料
         cur.execute("SELECT id, name, phone, email FROM users WHERE id=%s", (user_id,))
         updated_user = cur.fetchone()
         cur.close()
@@ -459,8 +409,8 @@ def update_user(user_id):
 @app.route('/get_products/<string:user_id>', methods=['GET'])
 def get_products(user_id):
     try:
-        search = request.args.get("search", None)   # 商品名稱 (模糊搜尋)
-        date_str = request.args.get("date", None)   # 日期 YYYY-MM-DD
+        search = request.args.get("search", None)   
+        date_str = request.args.get("date", None)   
 
         # 支援訪客模式
         if user_id == "0" or user_id.lower() == "guest":
@@ -475,17 +425,15 @@ def get_products(user_id):
         """
         params = [user_id]
 
-        # 商品名稱搜尋
+        
         if search:
             query += " AND p.proname LIKE %s"
             params.append(f"%{search}%")
 
-        # 日期篩選 (比對 history.created_at 日期)
         if date_str:
             query += " AND DATE(h.created_at) = %s"
             params.append(date_str)
 
-        # 依掃描時間新到舊排序
         query += " ORDER BY h.created_at DESC"
 
         cur = mysql.connection.cursor()
@@ -493,7 +441,6 @@ def get_products(user_id):
         products = cur.fetchall()
         cur.close()
 
-        # 整理回傳格式
         product_list = []
         for p in products:
             product_list.append({
@@ -523,28 +470,26 @@ def get_products(user_id):
 def delete_history(history_id):
     try:
         cur = mysql.connection.cursor()
-        # 加檢查這筆資料是否存在
         cur.execute("SELECT id FROM history WHERE id=%s", (history_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({"error": f"History ID {history_id} 不存在"}), 404
 
-        # 真正刪除
         cur.execute("DELETE FROM history WHERE id=%s", (history_id,))
         mysql.connection.commit()
         cur.close()
-        print(f"✅ 已刪除 history_id={history_id}")
+        print(f"已刪除 history_id={history_id}")
         return jsonify({"message": f"刪除成功 (ID={history_id})"}), 200
 
     except Exception as e:
-        print("❌ 刪除失敗:", traceback.format_exc())
+        print("刪除失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 儲存訪客歷史紀錄 ----------------------
 @app.route('/save_guest_history', methods=['POST'])
 @jwt_required()
 def save_guest_history():
-    user_id = int(get_jwt_identity()) # 從 JWT 取得登入後的 user ID
+    user_id = int(get_jwt_identity()) 
     data = request.get_json()
     product_id = data.get('productID')
 
@@ -554,7 +499,6 @@ def save_guest_history():
     try:
         cur = mysql.connection.cursor()
         
-        # 1. 檢查該 product 是否已經被這個 user 紀錄過
         cur.execute(
             "SELECT id FROM history WHERE userID=%s AND productID=%s",
             (user_id, product_id)
@@ -563,7 +507,6 @@ def save_guest_history():
             cur.close()
             return jsonify({"message": "紀錄已存在"}), 200
 
-        # 2. 插入新的 history 紀錄
         cur.execute(
             "INSERT INTO history (userID, productID, created_at) VALUES (%s, %s, NOW())",
             (user_id, product_id)
@@ -572,14 +515,14 @@ def save_guest_history():
         mysql.connection.commit()
         cur.close()
 
-        print(f"✅ 已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
+        print(f"已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
         return jsonify({
             "message": "歷史紀錄儲存成功",
             "HistoryID": history_id
         }), 200
 
     except Exception as e:
-        print("❌ 儲存訪客歷史紀錄失敗:", traceback.format_exc())
+        print("儲存訪客歷史紀錄失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 # ---------------------- 推薦商品 ----------------------
@@ -632,7 +575,6 @@ def recommend_products(product_id):
     products = []
     for row in rows:
         product = dict(zip(column_names, row))
-        # 將 ExpireDate 從 date 物件轉成 YYYY-MM-DD 字串
         if isinstance(product.get('ExpireDate'), (datetime, date)):
             product['ExpireDate'] = product['ExpireDate'].strftime("%Y-%m-%d")
         products.append(product)
@@ -644,7 +586,7 @@ def update_product_status_once():
     """啟動時掃描所有商品的 ExpireDate，更新 Status 為 '已過期' 或 '未過期'"""
     with app.app_context():
         try:
-            print("⏰ 啟動時自動檢查商品過期狀態...")
+            print("啟動時自動檢查商品過期狀態...")
             cur = mysql.connection.cursor()
             cur.execute("SELECT ProductID, ExpireDate FROM product")
             rows = cur.fetchall()
@@ -659,22 +601,22 @@ def update_product_status_once():
                     cur.execute("UPDATE product SET Status=%s WHERE ProductID=%s", (status, pid))
                     updated_count += 1
                 except Exception as e:
-                    print(f"❌ 更新 ProductID={pid} 狀態失敗:", e)
+                    print(f"更新 ProductID={pid} 狀態失敗:", e)
 
             mysql.connection.commit()
             cur.close()
-            print(f"✅ 商品狀態更新完成，共 {updated_count} 筆")
+            print(f"商品狀態更新完成，共 {updated_count} 筆")
         except Exception as e:
-            print("❌ 自動更新狀態失敗:", e)
+            print("自動更新狀態失敗:", e)
 
 # ---------------------- 訪客登入後儲存 ----------------------
 
 @app.route('/scan_records', methods=['POST'])
 @jwt_required()
 def save_scan_record():
-    user_id = int(get_jwt_identity())  # 從 JWT 取得登入後的 user ID
+    user_id = int(get_jwt_identity())  
     data = request.get_json()
-    product_id = data.get('productId')  # Flutter 端傳 productId
+    product_id = data.get('productId')  
 
     if not product_id:
         return jsonify({"error": "缺少 productId"}), 400
@@ -682,7 +624,6 @@ def save_scan_record():
     try:
         cur = mysql.connection.cursor()
         
-        # 1️⃣ 檢查是否已經紀錄過
         cur.execute(
             "SELECT id FROM history WHERE userID=%s AND productID=%s",
             (user_id, product_id)
@@ -691,7 +632,6 @@ def save_scan_record():
             cur.close()
             return jsonify({"message": "紀錄已存在"}), 200
 
-        # 2️⃣ 插入新的 history 紀錄
         cur.execute(
             "INSERT INTO history (userID, productID, created_at) VALUES (%s, %s, NOW())",
             (user_id, product_id)
@@ -700,14 +640,14 @@ def save_scan_record():
         mysql.connection.commit()
         cur.close()
 
-        print(f"✅ 已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
+        print(f"已將 ProductID={product_id} 綁定到 UserID={user_id}, HistoryID={history_id}")
         return jsonify({
             "message": "歷史紀錄儲存成功",
             "HistoryID": history_id
-        }), 201  # 用 201 Created 更語意化
+        }), 201  
 
     except Exception as e:
-        print("❌ 儲存掃描紀錄失敗:", traceback.format_exc())
+        print("儲存掃描紀錄失敗:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 

@@ -12,7 +12,7 @@ class RecognitionLoadingPage extends StatefulWidget {
   final String? userName;
   final String? token;
   final String? imagePath;
-  final String? market; // 👈 保留傳入的賣場名稱
+  final String? market; // 保留賣場名稱
 
   const RecognitionLoadingPage({
     super.key,
@@ -28,7 +28,6 @@ class RecognitionLoadingPage extends StatefulWidget {
 }
 
 class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
-  // 用於在失敗時更新 UI，顯示錯誤訊息
   String _statusMessage = "請稍待";
   bool _isError = false;
 
@@ -40,7 +39,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
     saveCurrentRoute('/loading'); 
   }
 
-  // 核心功能：處理圖片上傳和 OCR 請求
+  // 處理圖片上傳和 OCR 請求
   Future<void> _processImage() async {
     try {
       // 確保 imagePath 不為 null
@@ -58,7 +57,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
         await http.MultipartFile.fromPath('image', widget.imagePath!),
       );
       
-      // 2. 帶入 market 欄位
+      // 2. market 欄位
       request.fields['market'] = widget.market ?? '未知賣場';
 
       // 3. 帶入 JWT Token
@@ -89,13 +88,11 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
           ),
         );
       } else {
-        // 伺服器回傳錯誤狀態碼
         _handleError("伺服器回應失敗: ${response.statusCode}");
       }
 
     } catch (e) {
-      // 網路連線或其他例外錯誤
-      _handleError("❌ OCR 處理失敗: $e");
+      _handleError("OCR 處理失敗: $e");
     }
   }
   
@@ -106,7 +103,6 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
         _isError = true;
         _statusMessage = message;
       });
-      // 失敗後，延遲幾秒讓使用者看到錯誤，然後返回上一頁 (可選)
       Future.delayed(const Duration(seconds: 4), () {
         if (mounted) {
           Navigator.pop(context);
@@ -124,7 +120,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // LOGO (使用新樣式的圖片)
+            // LOGO
             Image.asset(
               'assets/logo.png',
               height: 140,
@@ -137,7 +133,7 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: _isError ? Colors.red : const Color.fromARGB(255, 0, 0, 0), // 失敗時變紅
+                color: _isError ? Colors.red : const Color.fromARGB(255, 0, 0, 0), 
               ),
             ),
             const SizedBox(height: 10),
@@ -152,8 +148,8 @@ class _RecognitionLoadingPageState extends State<RecognitionLoadingPage> {
 
             // loading indicator
             _isError
-                ? const Icon(Icons.error_outline, color: Colors.red, size: 50) // 失敗時顯示錯誤圖示
-                : const CircularProgressIndicator(color: Color(0xFF388E3C)), // 正常時顯示綠色進度條
+                ? const Icon(Icons.error_outline, color: Colors.red, size: 50) 
+                : const CircularProgressIndicator(color: Color(0xFF388E3C)), 
           ],
         ),
       ),

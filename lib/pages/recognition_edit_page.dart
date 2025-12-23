@@ -6,12 +6,6 @@ import '../services/route_logger.dart';
 import 'recognition_result_page.dart';
 import '../services/api_service.dart';
 
-// 注意：原程式碼中引用了 RecognitionLoadingPage，
-// 但在 RecognitionEditPage 類別中並未導入。
-// 為了程式碼的完整性，我會暫時使用 RecognitionResultPage 替換，
-// 但建議您檢查並確認 RecognitionLoadingPage 的路徑。
-// 為了遵循原程式碼邏輯，我將其改為 _updateProduct 方法中正確的導航邏輯。
-
 class RecognitionEditPage extends StatefulWidget {
   final int? userId;
   final String? userName;
@@ -38,9 +32,6 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
 
   late TextEditingController nameController;
   late TextEditingController dateController;
-  // 注意：原程式碼中這裡有 priceController, proPriceController, marketController
-  // 您的需求程式碼中用了 originalPriceController, discountPriceController, 但少了 Market。
-  // 為保持與 initState 和 _updateProduct 的一致性，我使用原始的名稱。
   late TextEditingController priceController;
   late TextEditingController proPriceController;
   late TextEditingController marketController; 
@@ -105,7 +96,6 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
         );
       }
     } else {
-      // 建議在實際 APP 中使用 ScaffoldMessenger 顯示錯誤
       print("更新失敗: ${res.body}");
     }
   }
@@ -114,17 +104,14 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _standardBackground,
-      // 💡 關鍵修正一：允許 Scaffold 自動調整佈局以避免鍵盤彈出時的溢位
+      // Scaffold 自動調整避免溢位
       resizeToAvoidBottomInset: true, 
       body: SafeArea(
-        // 💡 關鍵修正二：使用 SingleChildScrollView 包裹整個內容
+        // 包裹整個內容
         child: SingleChildScrollView(
-          // reverse: true, // reverse: true 較適合聊天應用，對表單來說，預設滾動通常更自然
           padding: const EdgeInsets.symmetric(vertical: 60.0, horizontal: 20),
           child: Column(
-            // 💡 關鍵修正三：為了讓鍵盤彈出時能看到輸入框，我們需要添加一個空間
-            // 這樣即使鍵盤彈出，也不會遮擋住最後一個輸入框和按鈕。
-            // 由於 SingleChildScrollView 本身能捲動，這裡不需要 reverse: true
+            // 由於 SingleChildScrollView 本身能捲動
             children: [
               // 返回按鈕靠左，LOGO 居中
               Stack(
@@ -152,15 +139,9 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
               // 顯示圖片
               if (widget.imagePath != null)
                 Image.file(File(widget.imagePath!), height: 200, fit: BoxFit.contain),
-              // 注意：原程式碼中使用 Image.file(File(widget.imagePath!))
-              // 您提供的範例程式碼中使用 Image.asset('assets/milk.jpg')
-              // 這裡以您的原邏輯為主：
-              // if (widget.imagePath != null)
-              //   Image.file(File(widget.imagePath!), height: 200, fit: BoxFit.contain),
-
               const SizedBox(height: 20),
 
-              // --- 輸入欄位 ---
+              // 輸入欄位
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
@@ -180,7 +161,7 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
               const SizedBox(height: 15),
 
               TextField(
-                controller: priceController, // 使用原始的 priceController
+                controller: priceController, 
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: '原價',
@@ -190,10 +171,10 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
               const SizedBox(height: 15),
 
               TextField(
-                controller: proPriceController, // 使用原始的 proPriceController
+                controller: proPriceController, 
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: '優惠價', // 使用原始的 '優惠價'
+                  labelText: '優惠價', 
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -208,9 +189,9 @@ class _RecognitionEditPageState extends State<RecognitionEditPage> {
               ),
               const SizedBox(height: 20),
 
-              // --- 送出按鈕 ---
+              // 送出按鈕 
               ElevatedButton(
-                onPressed: _updateProduct, // 點擊送出後執行更新 API
+                onPressed: _updateProduct, // 點擊送出更新 API
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   minimumSize: const Size(double.infinity, 50),

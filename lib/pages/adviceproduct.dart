@@ -44,10 +44,10 @@ class _AdviceProductListState extends State<AdviceProductList> {
           _isLoading = false;
         });
       } else {
-        print("❌ API錯誤: ${response.statusCode}");
+        print("API錯誤: ${response.statusCode}");
       }
     } catch (e) {
-      print("❌ 連線錯誤: $e");
+      print("連線錯誤: $e");
     }
   }
 

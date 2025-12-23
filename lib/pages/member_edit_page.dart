@@ -66,9 +66,9 @@ class _MemberEditPageState extends State<MemberEditPage> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('資料已成功修改！'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('資料修改成功！'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true); // ✅ 通知 Profile 要 reload
+      Navigator.pop(context, true); 
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('更新失敗'), backgroundColor: Colors.red),
@@ -76,14 +76,14 @@ class _MemberEditPageState extends State<MemberEditPage> {
     }
   }
 
-  // 🎯 LOGO 區塊 (從原始碼複製過來)
+  // LOGO
   Widget _buildLogo() {
     return const SizedBox(
-      height: 160, // 保持 Profile Page 的高度
+      height: 160, 
       width: double.infinity,
       child: Center(
         child: Image(
-          image: AssetImage('assets/logo.png'), // 使用 Image.asset
+          image: AssetImage('assets/logo.png'), 
           width: double.infinity,
           fit: BoxFit.fitWidth,
         ),
@@ -111,13 +111,13 @@ class _MemberEditPageState extends State<MemberEditPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 20.0),
                       child: Column(
                         children: [
-                          // 🎯 替換為圖片 Logo
+                          // 替換為圖片 Logo
                           Padding(
-                            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0), // 調整間距以適應 Logo 高度
+                            padding: const EdgeInsets.only(top: 20.0, bottom: 20.0), 
                             child: _buildLogo(), // 使用新的 Logo Widget
                           ),
                           _buildFormCard(),
-                          const SizedBox(height: 20), // 調整底部間距
+                          const SizedBox(height: 20), 
                         ],
                       ),
                     ),

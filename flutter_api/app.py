@@ -63,6 +63,7 @@ def extract_prices(texts):
     return price, pro_price
 
 
+
 def extract_product_info(texts):
     info = {"ProName": None, "ExpireDate": None, "Price": None, "ProPrice": None}
     max_length = 0 

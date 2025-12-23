@@ -8,7 +8,7 @@ import '../services/api_service.dart';
 import 'dart:io';
 import 'member_profile_page.dart';
 
-// 定義顏色常量
+// 顏色
 const Color _kPrimaryGreen = Color(0xFF388E3C);
 const Color _kLightGreenBg = Color(0xFFE8F5E9); 
 const Color _kCardBg = Color(0xFFF1F8E9); 
@@ -38,7 +38,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     saveCurrentRoute('/member_history'); 
   }
 
-  // 日期選擇器
+  // 日期選擇
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -71,7 +71,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     }
   }
 
-  // 抓歷史紀錄（不刷新 AI 價格）
+  // 抓取歷史紀錄（不刷新 AI 價格）
   Future<void> fetchHistory({DateTime? date, String? search}) async {
     setState(() => isLoading = true);
 
@@ -110,7 +110,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           });
         }
 
-        print("✅ 抓到歷史紀錄，共 ${products.length} 筆");
+        print("抓到歷史紀錄，共 ${products.length} 筆");
         for (var p in products) {
           print("Product: ${p['ProName']}, HistoryID=${p['HistoryID']}, AI=${p['AiPrice']}");
         }
@@ -119,7 +119,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
       }
     } catch (e) {
       if (mounted) setState(() => isLoading = false);
-      print("❌ Error fetching history: $e");
+      print("Error fetching history: $e");
     }
   }
 
@@ -127,7 +127,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
   void _deleteHistoryItem(int historyId, int index) async {
     if (historyId == -1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ 無效的 HistoryID')),
+        const SnackBar(content: Text('無效的 HistoryID')),
       );
       return;
     }
@@ -147,17 +147,17 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
           products.removeAt(index);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('✅ 已刪除紀錄 (ID=$historyId)')),
+          SnackBar(content: Text('已刪除紀錄 (ID=$historyId)')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ 刪除失敗: ${response.body}')),
+          SnackBar(content: Text('刪除失敗: ${response.body}')),
         );
       }
     } catch (e) {
-      print("❌ 刪除發生錯誤: $e");
+      print("刪除發生錯誤: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ 刪除發生錯誤: $e')),
+        SnackBar(content: Text('刪除發生錯誤: $e')),
       );
     }
   }
@@ -283,7 +283,7 @@ class _MemberHistoryPageState extends State<MemberHistoryPage> {
     );
   }
   
-  // 搜尋欄位 (含日曆)
+  // 搜尋欄位 
   Widget _buildSearchBar(BuildContext context) {
     return Container(
       width: double.infinity,
